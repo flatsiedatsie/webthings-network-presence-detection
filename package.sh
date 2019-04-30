@@ -10,14 +10,14 @@ rm -f SHA256SUMS
 
 # Put package together
 mkdir package
-cp -r pkg LICENSE package.json found_devices.json *.py requirements.txt setup.cfg package/
+cp -r pkg LICENSE package.json *.py package/
 find package -type f -name '*.pyc' -delete
 find package -type d -empty -delete
 
 # Generate checksums
 cd package
-sha256sum *.py pkg/*.py LICENSE requirements.txt setup.cfg > SHA256SUMS
+sha256sum *.py pkg/*.py LICENSE > SHA256SUMS
 cd -
 
 # Make the tarball
-tar czf "presence-adapter-${version}.tgz" package
+tar czf "network-presence-detection-adapter-${version}.tgz" package
