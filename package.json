@@ -1,10 +1,10 @@
 {
-  "name": "presence-adapter",
+  "name": "network-presence-detection-adapter",
   "display_name": "Network presence detector",
   "version": "0.0.1",
   "description": "Check if devices are on your network or not",
   "author": "Flatdiedatsie",
-  "main": "bootstrap.py",
+  "main": "main.py",
   "keywords": [
     "mozilla",
     "iot",
@@ -12,29 +12,25 @@
     "presence",
     "arp"
   ],
-  "homepage": "https://github.com/flatsiedatsie/Webthings-presence-detection",
+  "homepage": "https://github.com/flatsiedatsie/Webthings-network-presence-detection",
   "license": "MPL-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/flatsiedatsie/Webthings-presence-detection.git"
+    "url": "https://github.com/flatsiedatsie/Webthings-network-presence-detection.git"
   },
   "bugs": {
-    "url": "https://github.com/flatsiedatsie/Webthings-presence-detection/issues"
+    "url": "https://github.com/flatsiedatsie/Webthings-network-presence-detection/issues"
   },
   "files": [
     "LICENSE",
     "SHA256SUMS",
-    "bootstrap.py",
     "main.py",
-    "found_devices.json",
     "pkg/oui.txt",
     "pkg/__init__.py",
     "pkg/presence_adapter.py",
     "pkg/presence_device.py",
     "pkg/presence_property.py",
-    "pkg/util.py",
-    "requirements.txt",
-    "setup.cfg"
+    "pkg/util.py"
   ],
   "moziot": {
     "api": {
@@ -42,8 +38,8 @@
       "max": 2
     },
     "plugin": true,
-    "exec": "python3 {path}/bootstrap.py",
-   "config": {
+    "exec": "python3 {path}/main.py",
+    "config": {
       "Memory": "10"
     },
     "schema": {
