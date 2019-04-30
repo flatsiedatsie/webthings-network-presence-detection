@@ -111,7 +111,7 @@ class presenceAdapter(Adapter):
         
         # First we add any new devices on the network.
         try:
-            output = str(subprocess.check_output("sudo arp", shell=True).decode()) # .decode('ISO-8859-1')
+            output = str(subprocess.check_output("arp", shell=True).decode()) # .decode('ISO-8859-1')
 
             print(output)
             for line in output.split('\n'):
