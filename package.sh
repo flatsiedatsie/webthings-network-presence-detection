@@ -20,4 +20,4 @@ sha256sum *.py pkg/*.py LICENSE requirements.txt setup.cfg > SHA256SUMS
 cd -
 
 # Make the tarball
-tar czf "network-presence-${version}.tgz" package
+tar czf "presence-adapter-${version}.tgz" package

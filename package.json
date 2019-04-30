@@ -1,5 +1,5 @@
 {
-  "name": "network-presence",
+  "name": "presence-adapter",
   "display_name": "Network presence detector",
   "version": "0.0.1",
   "description": "Check if devices are on your network or not",
@@ -26,10 +26,9 @@
     "SHA256SUMS",
     "bootstrap.py",
     "main.py",
-    "oui.txt",
     "found_devices.json",
+    "pkg/oui.txt",
     "pkg/__init__.py",
-    "pkg/macvendor.py",
     "pkg/presence_adapter.py",
     "pkg/presence_device.py",
     "pkg/presence_property.py",
