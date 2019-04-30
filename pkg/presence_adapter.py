@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from gateway_addon import Adapter, Database
 
 from .presence_device import presenceDevice
-
+from .util import validip, clamp
 
 # for macvendor
 import os.path
@@ -30,7 +30,7 @@ _POLL_INTERVAL = 60   # 60 seconds between polling
 
 
 class presenceAdapter(Adapter):
-    """Adapter for MySensors"""
+    """Adapter for network presence detection"""
 
     def __init__(self, verbose=True):
         """
@@ -38,14 +38,14 @@ class presenceAdapter(Adapter):
 
         verbose -- whether or not to enable verbose logging
         """
-        print("initialising adapter from class")
+        print("Initialising adapter from class")
         self.pairing = False
         self.name = self.__class__.__name__
-        Adapter.__init__(self, 'network-presence', 'network-presence', verbose=verbose)
+        Adapter.__init__(self, 'presence-adapter', 'presence-adapter', verbose=verbose)
         print("Adapter ID = " + self.get_id())
         
         self.memory_in_weeks  = 10
-        
+        self.time_window = 60
         self.add_from_config()
         
         
@@ -73,7 +73,7 @@ class presenceAdapter(Adapter):
         # Present all devices to the gateway
         for key in self.previously_found:
             item = self.previously_found[key]
-            self._add_device(str(key), str(item['name']), '') # adding the device
+            self._add_device(str(key), str(item['name']), str('...')) # adding the device
 
             
             
@@ -119,49 +119,61 @@ class presenceAdapter(Adapter):
                 #print("line: " + str(line))
                 line = str(line)
                 
-                ip_addresses = re.findall( r'[0-9]+(?:\.[0-9]+){3}', line)
-                #print("ip address(es) found: " + str(ip_addresses))
+                #ip_addresses = re.findall( r'[0-9]+(?:\.[0-9]+){3}', line)
+                ip_address = str(line.split('  ')[0]) # we just get the first thing on the line. Sometimes this is an IP address, sometimes it's a name.
+                print("ip address found: " + str(ip_address))
                 
                 
                 mac_addresses = re.findall(r'(?:[0-9a-fA-F]:?){12}', line)
                 #print("mac address(es) found: " + str(mac_addresses))
 
-                if len(ip_addresses) == 0:
+                #if len(ip_addresses) == 0:
                     #print("ip address was empty")
-                    ip_address = ''
-                else:
-                    ip_address = ip_addresses[0]
+                #    ip_address = ''
+                #else:
+                #    ip_address = ip_addresses[0]
 
                 if len(mac_addresses) == 0:
                     #print("No useful data")
                     
                     if "incomplete" in line:
                         mac_address = "unknown" + str(ip_address)
-                        vendorName = "Presence - Unknown device"
+                        if validip(ip_address):
+                            found_device_name = "Presence - Unknown device"
+                        else:
+                            found_device_name = "Presence - " + str(ip_address) # in this case the IP address variable actually contains a valid hostname.
                     else:    
                         continue
                 else:
                     mac_address = mac_addresses[0]
-                    vendorName = "Presence - " + str(get_vendor(mac_address).split(',', 1)[0]) # Get the vendor name, and shorten it. It removes everything after the comma. Thus "Apple, inc" becomes "Apple"
+                    
+                    if validip(ip_address):
+                        found_device_name = "Presence - " + str(get_vendor(mac_address).split(',', 1)[0]) # Get the vendor name, and shorten it. It removes everything after the comma. Thus "Apple, inc" becomes "Apple"
+                    else:
+                        found_device_name = "Presence - " + str(ip_address) # in this case the IP address variable actually contains a valid hostname.
+
                 
-                print("Initial vendor name: " + str(vendorName))
+                print("Initial name: " + str(found_device_name))
                 
                 mac_address = mac_address.replace(":","")
                 #print("cleaned mac: " + str(mac_address))
                 
                 try:
+                    
+                    # We've seen this device before.
                     if mac_address in self.previously_found:
                         print(" -mac address already known")
                         #print(str( self.previously_found[mac_address]['lastseen'] ))
                         self.previously_found[mac_address]['lastseen'] = datetime.timestamp(now)
                         # should now update the last seen time stamp.
-                        print("- last seen date updated")
-                        pass
+                        print(" -last seen date updated")
+                    
+                    # We found a completely new device on the network.
                     else:
                         shouldSave = True
                         
                         i = 2 # We skip "1" as a number. So we will get names like "Apple" and then "Apple 2", "Apple 3", and so on.
-                        possibleName = vendorName
+                        possibleName = found_device_name
                         could_be_same_same = True
                         
                         while could_be_same_same is True: # We check if this name already exists in the list of previously found devices.
@@ -170,7 +182,7 @@ class presenceAdapter(Adapter):
                                 if possibleName == item['name']: # The name already existed in the list, so we change it a little bit and compare again.
                                     could_be_same_same = True
                                     #print("names collided")
-                                    possibleName = vendorName + " " + str(i)
+                                    possibleName = found_device_name + " " + str(i)
                                     i += 1
                                     
                         self.previously_found[str(mac_address)] = { 'name': str(possibleName),'lastseen': datetime.timestamp(now) }
@@ -178,10 +190,24 @@ class presenceAdapter(Adapter):
                         self._add_device(str(mac_address), str(possibleName), str(ip_address)) # The device did not exist yet, so we're creating it.
                         
                         print("Added new device:" + str(possibleName))
-
+                        
                 except Exception as ex:
                     print("Error comparing to previous mac addresses list: " + str(ex))
 
+                # Update the Details property. The device may have a new IP address.
+                try:
+                    if 'details' in self.devices[mac_address].properties:
+                        if ip_address != '':
+                            print("UPDATING DETAILS for " + str(mac_address))
+                            self.devices[mac_address].properties['details'].update(str(ip_address))
+                        else:
+                            print("ip_address was empty, so not updating the details property.")
+                    else:
+                        print("The details property did not exist? Does the device even exist?")
+                except Exception as ex:
+                    print("Not turned into a device object yet? Error: " + str(ex))
+
+                    
         except Exception as ex:
             print("Error while scanning: " + str(ex))
 
@@ -190,11 +216,11 @@ class presenceAdapter(Adapter):
             self.save_to_json()
         
         
-        # Secondly, we go over the list of all previously found devices, and check their last-update times
+        # Secondly, we go over the list of all previously found devices, and update them.
         try:
             print()
             #past = datetime.now() - timedelta(hours=1)
-            past = datetime.now() - timedelta(minutes=2)
+            past = datetime.now() - timedelta(minutes=self.time_window)
             #print("An hour ago: " + str(past))
             paststamp = datetime.timestamp(past)
 
@@ -203,29 +229,35 @@ class presenceAdapter(Adapter):
 
                 item = self.previously_found[key]
                 
-                # Check if the device already has a property.
-                if not 'lasthour' in self.devices[key].properties:
-                    # add the property
-                    print("While updating, noticed device did not yet have the lastHour property. Adding now.")
-                    self.devices[key].add_boolean_child('lasthour', "Seen in the last hour", True)
+                try:
+                    # Check if the device already has a property.
+                    if not 'recently1' in self.devices[key].properties:
+                        # add the property
+                        print("While updating, noticed device did not yet have the recently spotted property. Adding now.")
+                        self.devices[key].add_boolean_child('recently1', "Recently spotted", True)
 
-                else:
-                    if paststamp > item['lastseen']:
-                        print(str(key) + " was last seen over an hour ago")
-                        self.devices[key].properties['lasthour'].update(False)
                     else:
-                        print(str(key) + " was spotted less than an hour ago")
-                        self.devices[key].properties['lasthour'].update(True)
+                        print("UPDATING LAST SEEN for " + str(key))
+                        if paststamp > item['lastseen']:
+                            print("BYE! " + str(key) + " was last seen over " + str(self.time_window) + " ago")
+                            self.devices[key].properties['recently1'].update(False)
+                        else:
+                            print("HI!  " + str(key) + " was spotted less than " + str(self.time_window) + " minutes ago")
+                            self.devices[key].properties['recently1'].update(True)
+                            
+                except Exception as ex:
+                    print("Could not create or update property. Error: " + str(ex))
 
+                
         except Exception as ex:
-            print("Error while updating: " + str(ex))
+            print("Error while updating device: " + str(ex))
                 
         # Here we remove devices that haven't been spotted in a long time.
         self.prune()
         
         
         
-    def _add_device(self, mac, name, details=''):
+    def _add_device(self, mac, name, details):
         """
         Add the given device, if necessary.
 
@@ -278,28 +310,34 @@ class presenceAdapter(Adapter):
             print("Error pruning: " + str(ex))
 
 
+
     def add_from_config(self):
         """Attempt to add all configured devices."""
         
         try:
             database = Database('presence-adapter')
+
+        
+            if not database.open():
+                return
+
+            config = database.load_config()
+            database.close()
+
+            if not config or 'Memory' not in config or 'Time window' not in config:
+                print("Required variables not found in config database?")
+                return
+
+            self.memory_in_weeks = clamp(int(config['Memory']), 1, 50) # The variable is clamped: it is forced to be between 1 and 50.
+            self.time_window = clamp(int(config['Time window']), 1, 1380) # 'Grace period' could also be a good name.
+            print("CONFIG LOADED OK")
+        
         except:
-            print("config database error")
-        
-        if not database.open():
-            return
+            print("Error getting config data from database")
 
-        config = database.load_config()
-        database.close()
 
-        if not config or 'Memory' not in config:
-            return
-
-        self.memory_in_weeks = int(config['Memory'])
-        
 
     def save_to_json(self):
-            #print(str(self.previously_found))
         try:
             print()
             print("Saving updated list of found devices to json file")

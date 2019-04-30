@@ -1,12 +1,9 @@
-"""MySensors adapter for Mozilla WebThings Gateway."""
-
-import mysensors.mysensors as mysensors
+"""Network presence adapter for Mozilla WebThings Gateway."""
 
 from gateway_addon import Property
-from .util import pretty, is_a_number, get_int_or_float
 
 class presenceProperty(Property):
-    """MySensors property type."""
+    """Network presence property type."""
 
     def __init__(self, device, name, description, value):
         """
@@ -28,7 +25,7 @@ class presenceProperty(Property):
 
 
             self.device = device
-            self.name = name # These three are used in the set_value function to send a message back to the proper node in the MySensors network.
+            self.name = name
             self.description = description
             self.value = value
             
@@ -58,7 +55,7 @@ class presenceProperty(Property):
         value -- the value to update
         """
         
-        print("property -> update")
+        print("property -> update to: " + str(value))
         
         if value != self.value:
             print("-property has updated")
