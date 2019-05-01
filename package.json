@@ -1,7 +1,7 @@
 {
   "name": "network-presence-detection-adapter",
   "display_name": "Network presence detector",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Check if devices are on your network or not",
   "author": "Flatdiedatsie",
   "main": "main.py",
@@ -10,7 +10,8 @@
     "iot",
     "adapter",
     "presence",
-    "arp"
+    "arp",
+    "ping"
   ],
   "homepage": "https://github.com/flatsiedatsie/Webthings-network-presence-detection",
   "license": "MPL-2.0",
