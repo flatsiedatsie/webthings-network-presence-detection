@@ -2,7 +2,8 @@
 
 from gateway_addon import Property
 
-class presenceProperty(Property):
+
+class PresenceProperty(Property):
     """Network presence property type."""
 
     def __init__(self, device, name, description, value):
@@ -15,27 +16,24 @@ class presenceProperty(Property):
         value -- current value of this property
         """
         print()
-        print("+ PROPERTY init: " + str(name))
+        print("+ PROPERTY init: " + name)
         print("-device: " + str(device))
-        #print("-name: " + str(name))
         print("-description: " + str(description))
         print("-value: " + str(value))
         try:
             Property.__init__(self, device, name, description)
 
-
             self.device = device
             self.name = name
             self.description = description
             self.value = value
-            
+
             self.set_cached_value(value)
             self.device.notify_property_changed(self)
             print("property init done")
-            
+
         except Exception as ex:
             print("inside adding property error: " + str(ex))
-
 
     def set_value(self, value):
         """
@@ -43,20 +41,17 @@ class presenceProperty(Property):
 
         value -- the value to set
         """
-        
         print("property -> set_value")
-        print("->name " + str(self.name))
+        print("->name " + self.name)
 
-
-    def update(self, value): 
+    def update(self, value):
         """
         Update the current value, if necessary.
 
         value -- the value to update
         """
-        
         print("property -> update to: " + str(value))
-        
+
         if value != self.value:
             print("-property has updated")
             self.set_cached_value(value)

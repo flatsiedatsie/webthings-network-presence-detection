@@ -9,7 +9,7 @@ import time
 
 sys.path.append(path.join(path.dirname(path.abspath(__file__)), 'lib'))
 
-from pkg.presence_adapter import presenceAdapter  # noqa
+from pkg.presence_adapter import PresenceAdapter  # noqa
 
 
 _API_VERSION = {
@@ -37,7 +37,7 @@ if __name__ == '__main__':
 
     signal.signal(signal.SIGINT, cleanup)
     signal.signal(signal.SIGTERM, cleanup)
-    _ADAPTER = presenceAdapter(verbose=True)
+    _ADAPTER = PresenceAdapter(verbose=True)
 
     # Wait until the proxy stops running, indicating that the gateway shut us
     # down.
