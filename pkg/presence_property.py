@@ -2,7 +2,7 @@
 
 from gateway_addon import Property
 
-class presenceProperty(Property):
+class PresenceProperty(Property):
     """Network presence property type."""
 
     def __init__(self, device, name, description, value):

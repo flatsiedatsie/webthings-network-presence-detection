@@ -6,8 +6,15 @@ import subprocess   # For executing a shell command
 
 
 def valid_ip(ip):
-    return ip.count('.') == 3 and  all(0<=int(num)<256 for num in ip.rstrip().split('.'))
+    return ip.count('.') == 3 and \
+        all(0 <= int(num) < 256 for num in ip.rstrip().split('.'))
 
+
+def valid_mac(mac):
+    return mac.count(':') == 5 and \
+        all(0 <= int(num, 16) < 256 for num in mac.rstrip().split(':'))
+    
+    
 def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
 
@@ -25,7 +32,6 @@ def get_ip():
     return IP
 
 
-
 def ping(ip_address, count):
     param = '-n' if platform.system().lower()=='windows' else '-c'
     repeats = str(param) + str(count)
@@ -41,6 +47,7 @@ def ping(ip_address, count):
         print("error pinging! Error: " + str(ex))
         return 1
 
+    
 def arping(ip_address, count):
     param = '-n' if platform.system().lower()=='windows' else '-c'
     command = "sudo arping " + str(param) + " " + str(count) + " " + str(ip_address)
@@ -52,6 +59,7 @@ def arping(ip_address, count):
         print("error arpinging! Error: " + str(ex))
         return 1
 
+    
 def arp(ip_address):
     if valid_ip(ip_address):
         command = "arp -a " + str(ip_address)

@@ -1,11 +1,11 @@
 """Network presence adapter for Mozilla WebThings Gateway."""
 
 from gateway_addon import Device
-from .presence_property import presenceProperty
+from .presence_property import PresenceProperty
 
 
 
-class presenceDevice(Device):
+class PresenceDevice(Device):
     """network presence device type."""
 
     def __init__(self, adapter, mac, name, details):
@@ -20,7 +20,7 @@ class presenceDevice(Device):
         
         print()
         print("+ DEVICE init: " + str(name))
-        Device.__init__(self, adapter, mac)
+        Device.__init__(self, adapter, 'presence-{}'.format(mac))
         
         self.adapter = adapter
         self.id = str(mac)
@@ -32,7 +32,7 @@ class presenceDevice(Device):
         #print("device self.properties at init: " + str(self.properties))
         #self.connected_notify(True)
         
-        self.properties['details'] = presenceProperty(
+        self.properties['details'] = PresenceProperty(
             self,
             'details',
             {
@@ -46,7 +46,7 @@ class presenceDevice(Device):
     def add_boolean_child(self, propertyID, new_description, new_value):
         print("+ DEVICE.ADD_BOOLEAN_CHILD with id: " + str(propertyID))
 
-        self.properties[propertyID] = presenceProperty(
+        self.properties[propertyID] = PresenceProperty(
             self,
             propertyID,
             {
@@ -69,7 +69,7 @@ class presenceDevice(Device):
     def add_integer_child(self, propertyID, new_description, new_value):
         print("+ DEVICE.ADD_INTEGER_CHILD with id: " + str(propertyID))
 
-        self.properties[propertyID] = presenceProperty(
+        self.properties[propertyID] = PresenceProperty(
             self,
             propertyID,
             {

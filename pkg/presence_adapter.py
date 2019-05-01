@@ -11,8 +11,8 @@ import re
 from datetime import datetime, timedelta
 from gateway_addon import Adapter, Database
 
-from .presence_device import presenceDevice
-from .util import valid_ip, clamp, get_ip, ping, arping, arp
+from .presence_device import PresenceDevice
+from .util import valid_ip, valid_mac, clamp, get_ip, ping, arping, arp
 
 # for macvendor
 import os.path
@@ -28,7 +28,7 @@ __location__ = os.path.realpath(
 
 
 
-class presenceAdapter(Adapter):
+class PresenceAdapter(Adapter):
     """Adapter for network presence detection"""
 
     def __init__(self, verbose=True):
@@ -200,91 +200,95 @@ class presenceAdapter(Adapter):
                 now = datetime.timestamp(datetime.now())
 
                 if len(mac_addresses):
-                        try:
+                    try:
 
-                            # Get the basic variables
-                            mac_address = mac_addresses[0].replace(":","")
-                            found_device_name = (output.split('(')[0]).strip()
+                        if not valid_mac(mac_address):
+                            continue
 
-                            if found_device_name == '?':
-                                found_device_name = "Presence - " + str(get_vendor(mac_address).split(' ', 1)[0]) # Get the vendor name, and shorten it. It removes everything after the comma. Thus "Apple, inc" becomes "Apple"
-                            else:
-                                found_device_name = "Presence - " + found_device_name                            
+                        # Get the basic variables
+                        mac_address = mac_addresses[0].replace(":","")
+                        found_device_name = (output.split('(')[0]).strip()
 
-                            print("--mac:  " + mac_address)
-                            print("--name: " + found_device_name)
-                        except Exception as ex:
-                            print("Error setting up variables: " + str(ex))
+                        if found_device_name == '?':
+                            found_device_name = str(get_vendor(mac_address).split(' ', 1)[0]) # Get the vendor name, and shorten it. It removes everything after the comma. Thus "Apple, inc" becomes "Apple"
+                            found_device_name = "Presence - " + found_device_name.split(',', 1)[0]
+                        else:
+                            found_device_name = "Presence - " + found_device_name                            
 
-
-                        # Create or update items in the previously_found dictionary
-                        try:
-                            possibleName = ''
-                            if mac_address not in self.previously_found:
-
-                                should_save = True
-
-                                i = 2 # We skip "1" as a number. So we will get names like "Apple" and then "Apple 2", "Apple 3", and so on.
-                                possibleName = found_device_name
-                                could_be_same_same = True
-
-                                while could_be_same_same is True: # We check if this name already exists in the list of previously found devices.
-                                    could_be_same_same = False
-                                    for item in self.previously_found.values():
-                                        if possibleName == item['name']: # The name already existed in the list, so we change it a little bit and compare again.
-                                            could_be_same_same = True
-                                            #print("names collided")
-                                            possibleName = found_device_name + " " + str(i)
-                                            i += 1
-
-                                self.previously_found[str(mac_address)] = { 'name': str(possibleName),'lastseen': now }
-                            else:
-                                print(" -mac address already known")
-
-                                self.previously_found[mac_address]['lastseen'] = now
-                                possibleName = self.previously_found[mac_address]['name']
-                        except Exception as ex:
-                            print("Error updating items in the previously_found dictionary: " + str(ex))
+                        print("--mac:  " + mac_address)
+                        print("--name: " + found_device_name)
+                    except Exception as ex:
+                        print("Error setting up variables: " + str(ex))
 
 
-                        # Present new device to the WebThings gateway, or update them.
-                        try:
-                            if not mac_address in self.devices:
-                                # Present new device to the WebThings gateway
-                                print("not mac_address in self.devices")
-                                self._add_device(str(mac_address), str(possibleName), str(ip_address)) # The device did not exist yet, so we're creating it.
-                                print("Presented new device to gateway:" + str(possibleName))
-                            else:
-                                if 'details' in self.devices[mac_address].properties:
-                                    if ip_address != '':
-                                        print("UPDATING DETAILS for " + str(mac_address))
-                                        self.devices[mac_address].properties['details'].update(str(ip_address))
-                                    else:
-                                        print("ip_address was empty, so not updating the details property.")
+                    # Create or update items in the previously_found dictionary
+                    try:
+                        possibleName = ''
+                        if mac_address not in self.previously_found:
+
+                            should_save = True
+
+                            i = 2 # We skip "1" as a number. So we will get names like "Apple" and then "Apple 2", "Apple 3", and so on.
+                            possibleName = found_device_name
+                            could_be_same_same = True
+
+                            while could_be_same_same is True: # We check if this name already exists in the list of previously found devices.
+                                could_be_same_same = False
+                                for item in self.previously_found.values():
+                                    if possibleName == item['name']: # The name already existed in the list, so we change it a little bit and compare again.
+                                        could_be_same_same = True
+                                        #print("names collided")
+                                        possibleName = found_device_name + " " + str(i)
+                                        i += 1
+
+                            self.previously_found[str(mac_address)] = { 'name': str(possibleName),'lastseen': now }
+                        else:
+                            print(" -mac address already known")
+
+                            self.previously_found[mac_address]['lastseen'] = now
+                            possibleName = self.previously_found[mac_address]['name']
+                    except Exception as ex:
+                        print("Error updating items in the previously_found dictionary: " + str(ex))
+
+
+                    # Present new device to the WebThings gateway, or update them.
+                    try:
+                        if mac_address not in self.devices:
+                            # Present new device to the WebThings gateway
+                            print("not mac_address in self.devices")
+                            self._add_device(str(mac_address), str(possibleName), str(ip_address)) # The device did not exist yet, so we're creating it.
+                            print("Presented new device to gateway:" + str(possibleName))
+                        else:
+                            if 'details' in self.devices[mac_address].properties:
+                                if ip_address != '':
+                                    print("UPDATING DETAILS for " + mac_address)
+                                    self.devices[mac_address].properties['details'].update(str(ip_address))
                                 else:
-                                    print("The details property did not exist? Does the device even exist?")
-                        except Exception as ex:
-                            print("Error presenting new device to the WebThings gateway, or updating them.: " + str(ex))
-
-                        # Present new device properties to the WebThings gateway, or update them.
-                        try:
-                            if not 'recently1' in self.devices[mac_address].properties:
-                                # add the property
-                                print()
-                                print("While updating, noticed device did not yet have the recently spotted property. Adding now.")
-                                self.devices[mac_address].add_boolean_child('recently1', "Recently spotted", True)
+                                    print("ip_address was empty, so not updating the details property.")
                             else:
-                                self.devices[mac_address].properties['recently1'].update(True)
+                                print("The details property did not exist? Does the device even exist?")
+                    except Exception as ex:
+                        print("Error presenting new device to the WebThings gateway, or updating them.: " + str(ex))
 
-                            if not 'minutes_ago' in self.devices[mac_address].properties:
-                                # add the property
-                                print()
-                                print("While updating, noticed device did not yet have the minutes ago property. Adding now.")
-                                self.devices[mac_address].add_integer_child('minutes_ago', "Minutes ago last seen", 0)
-                            else:
-                                self.devices[mac_address].properties['minutes_ago'].update(0)
-                        except Exception as ex:
-                            print("Error presenting new device properties to the WebThings gateway, or updating them.: " + str(ex))
+                    # Present new device properties to the WebThings gateway, or update them.
+                    try:
+                        if 'recently1' not in self.devices[mac_address].properties:
+                            # add the property
+                            print()
+                            print("While updating, noticed device did not yet have the recently spotted property. Adding now.")
+                            self.devices[mac_address].add_boolean_child('recently1', "Recently spotted", True)
+                        else:
+                            self.devices[mac_address].properties['recently1'].update(True)
+
+                        if 'minutes_ago' not in self.devices[mac_address].properties:
+                            # add the property
+                            print()
+                            print("While updating, noticed device did not yet have the minutes ago property. Adding now.")
+                            self.devices[mac_address].add_integer_child('minutes_ago', "Minutes ago last seen", 0)
+                        else:
+                            self.devices[mac_address].properties['minutes_ago'].update(0)
+                    except Exception as ex:
+                        print("Error presenting new device properties to the WebThings gateway, or updating them.: " + str(ex))
                             
 
             # If no device was found at this IP address:
@@ -313,11 +317,11 @@ class presenceAdapter(Adapter):
 
                 try:
                     # Make sure all devices and properties exist. Should be superfluous really.
-                    if not key in self.devices:
+                    if key not in self.devices:
                         self._add_device(key, self.previously_found[key]['name'], '...') # The device did not exist yet, so we're creating it.
-                    if not 'recently1' in self.devices[key].properties:
+                    if 'recently1'not  in self.devices[key].properties:
                         self.devices[key].add_boolean_child('recently1', "Recently spotted", False)
-                    if not 'minutes_ago' in self.devices[key].properties:
+                    if 'minutes_ago' not in self.devices[key].properties:
                         self.devices[key].add_integer_child('minutes_ago', "Minutes ago last seen", 99999)
 
                     # Update devices
@@ -352,7 +356,7 @@ class presenceAdapter(Adapter):
         """
         try:
             print("adapter._add_device: " + str(name))
-            device = presenceDevice(self, mac, name, details)
+            device = PresenceDevice(self, mac, name, details)
             self.handle_device_added(device)
             print("-Adapter has finished adding new device")
 
@@ -430,7 +434,7 @@ class presenceAdapter(Adapter):
         try:
             print()
             print("Saving updated list of found devices to json file")
-            if str(self.previously_found) != 'Null' or str(self.previously_found) != 'None':
+            if self.previously_found and self.filename:
                 with open(self.filename, 'w') as fp:
                     json.dump(self.previously_found, fp)
         except:
