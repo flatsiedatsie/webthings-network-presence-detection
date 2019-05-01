@@ -39,7 +39,7 @@ class presenceProperty(Property):
 
     def set_value(self, value):
         """
-        Set the current value of the property.
+        Set the current value of the property. This is called when the user uses the gateway UX.
 
         value -- the value to set
         """

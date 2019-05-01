@@ -44,8 +44,7 @@ class presenceDevice(Device):
 
 
     def add_boolean_child(self, propertyID, new_description, new_value):
-        print()
-        print("+ DEVICE.ADD_CHILD with id: " + str(propertyID))
+        print("+ DEVICE.ADD_BOOLEAN_CHILD with id: " + str(propertyID))
 
         self.properties[propertyID] = presenceProperty(
             self,
@@ -54,6 +53,28 @@ class presenceDevice(Device):
                 '@type': 'BooleanProperty',
                 'label': new_description,
                 'type': 'boolean',
+                'readOnly': True,
+            },
+            new_value)
+
+        try:
+            self.notify_property_changed(self.properties[propertyID])
+            self.adapter.handle_device_added(self)
+            #print("-All properties: " + str(self.get_property_descriptions()))
+
+        except Exception as ex:
+            print("Handle_device_added after adding property error: " + str(ex))
+
+
+    def add_integer_child(self, propertyID, new_description, new_value):
+        print("+ DEVICE.ADD_INTEGER_CHILD with id: " + str(propertyID))
+
+        self.properties[propertyID] = presenceProperty(
+            self,
+            propertyID,
+            {
+                'label': new_description,
+                'type': 'integer',
                 'readOnly': True,
             },
             new_value)
