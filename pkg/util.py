@@ -12,9 +12,10 @@ def valid_ip(ip):
 
 def valid_mac(mac):
     return mac.count(':') == 5 and \
-        all(0 <= int(num, 16) < 256 for num in mac.rstrip().split(':'))
-    
-    
+        all(0 <= int(num, 16) < 256 for num in mac.rstrip().split(':')) and \
+        not all(int(num, 16) == 255 for num in mac.rstrip().split(':'))
+
+
 def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
 
@@ -33,8 +34,7 @@ def get_ip():
 
 
 def ping(ip_address, count):
-    param = '-n' if platform.system().lower()=='windows' else '-c'
-    repeats = str(param) + str(count)
+    param = '-n' if platform.system().lower() == 'windows' else '-c'
     #command = ["ping", param, count, "-i", 1, str(ip_address)]
     command = "ping " + str(param) + " " + str(count) + " -i 0.5 " + str(ip_address)
     #print("command: " + str(command))
@@ -47,9 +47,9 @@ def ping(ip_address, count):
         print("error pinging! Error: " + str(ex))
         return 1
 
-    
+
 def arping(ip_address, count):
-    param = '-n' if platform.system().lower()=='windows' else '-c'
+    param = '-n' if platform.system().lower() == 'windows' else '-c'
     command = "sudo arping " + str(param) + " " + str(count) + " " + str(ip_address)
     #print("command: " + str(command))
     try:
@@ -59,16 +59,16 @@ def arping(ip_address, count):
         print("error arpinging! Error: " + str(ex))
         return 1
 
-    
+
 def arp(ip_address):
     if valid_ip(ip_address):
-        command = "arp -a " + str(ip_address)
+        command = "arp " + str(ip_address)
         try:
             result = subprocess.run(command, shell=True, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
             return str(result.stdout)
             #for line in result.stdout.split('\n'):
                 #print("line: " + line)
-            
+
         except Exception as ex:
             print("Arp error: " + str(ex))
             result = 'error'

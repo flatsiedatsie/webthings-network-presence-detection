@@ -9,7 +9,7 @@ import time
 
 sys.path.append(path.join(path.dirname(path.abspath(__file__)), 'lib'))
 
-from pkg.presence_adapter import presenceAdapter  # noqa
+from pkg.presence_adapter import PresenceAdapter  # noqa
 
 
 _API_VERSION = {
