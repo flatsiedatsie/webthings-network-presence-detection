@@ -28,11 +28,11 @@ class PresenceProperty(Property):
             self.name = name
             self.description = description
             self.value = value
-            
+
             self.set_cached_value(value)
             self.device.notify_property_changed(self)
             print("property init done")
-            
+
         except Exception as ex:
             print("inside adding property error: " + str(ex))
 
@@ -43,20 +43,20 @@ class PresenceProperty(Property):
 
         value -- the value to set
         """
-        
+
         print("property -> set_value")
         print("->name " + str(self.name))
 
 
-    def update(self, value): 
+    def update(self, value):
         """
         Update the current value, if necessary.
 
         value -- the value to update
         """
-        
+
         print("property -> update to: " + str(value))
-        
+
         if value != self.value:
             print("-property has updated")
             self.set_cached_value(value)
