@@ -42,7 +42,8 @@
     "exec": "python3 {path}/main.py",
     "config": {
       "Time window": "60",
-      "Memory": "10"
+      "Memory": "10",
+      "Arping": true,
     },
     "schema": {
       "type": "object",
@@ -58,6 +59,10 @@
         "Memory": {
           "type": "number",
           "description": "How many weeks should the add-on remember (and keep presenting) devices it has once seen? The default setting is 10 weeks."
+        },
+        "Arping": {
+          "type": "boolean",
+          "description": "Use arping? It can only be used if you have it installed on your system."
         }
       }
     }
