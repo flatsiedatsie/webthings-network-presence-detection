@@ -58,7 +58,7 @@ class PresenceProperty(Property):
         #print("property -> update to: " + str(value))
         try:
             if value != self.value:
-                print("-property has updated to "  + str(value))
+                #print("-property has updated to "  + str(value))
                 #self.set_cached_value_and_notify(self, value) For future version, can then remove both lines below.
                 self.set_cached_value(value)
                 self.device.notify_property_changed(self)

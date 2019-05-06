@@ -42,6 +42,7 @@ class PresenceAdapter(Adapter):
 
         self.memory_in_weeks = 10 # How many weeks a device will be remembered as a possible device.
         self.time_window = 60 # How many minutes should a device be away before we concider it away?
+        self.arping = 0 # Does the user also want to try using arping?
 
         self.add_from_config() # Here we get data from the settings in the Gateway interface.
 
@@ -193,8 +194,9 @@ class PresenceAdapter(Adapter):
             alive = False   # holds whether we got any response.
             if ping(ip_address, ping_count) == 0: # 0 means everything went ok, so a device was found.
                 alive = True
-            elif arping(ip_address, ping_count) == 0: # 0 means everything went ok, so a device was found.
-                alive = True
+            elif self.arping:
+                if arping(ip_address, ping_count) == 0: # 0 means everything went ok, so a device was found.
+                    alive = True
 
             # If either ping or arping found a device:
             if alive:
@@ -464,6 +466,7 @@ class PresenceAdapter(Adapter):
 
             self.memory_in_weeks = clamp(int(config['Memory']), 1, 50) # The variable is clamped: it is forced to be between 1 and 50.
             self.time_window = clamp(int(config['Time window']), 1, 1380) # 'Grace period' could also be a good name.
+            self.arping = config['Arping'] # boolean.
             print("Config loaded ok")
 
         except:
