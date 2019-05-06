@@ -26,6 +26,7 @@
     "LICENSE",
     "SHA256SUMS",
     "main.py",
+    "bootstrap.py",
     "pkg/oui.txt",
     "pkg/__init__.py",
     "pkg/presence_adapter.py",
