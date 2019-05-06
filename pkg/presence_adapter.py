@@ -37,12 +37,15 @@ class PresenceAdapter(Adapter):
         print("Initialising adapter from class")
         self.pairing = False
         self.name = self.__class__.__name__
-        Adapter.__init__(self, 'presence-adapter', 'presence-adapter', verbose=verbose)
+        Adapter.__init__(self,
+                         'network-presence-detection-adapter',
+                         'network-presence-detection-adapter',
+                         verbose=verbose)
         #print("Adapter ID = " + self.get_id())
 
         self.memory_in_weeks = 10 # How many weeks a device will be remembered as a possible device.
         self.time_window = 60 # How many minutes should a device be away before we concider it away?
-        self.arping = 0 # Does the user also want to try using arping?
+        self.arping = False # Does the user also want to try using arping?
 
         self.add_from_config() # Here we get data from the settings in the Gateway interface.
 
@@ -451,7 +454,7 @@ class PresenceAdapter(Adapter):
         """Attempt to add all configured devices."""
 
         try:
-            database = Database('presence-adapter')
+            database = Database('network-presence-detection-adapter')
 
 
             if not database.open():
@@ -466,7 +469,10 @@ class PresenceAdapter(Adapter):
 
             self.memory_in_weeks = clamp(int(config['Memory']), 1, 50) # The variable is clamped: it is forced to be between 1 and 50.
             self.time_window = clamp(int(config['Time window']), 1, 1380) # 'Grace period' could also be a good name.
-            self.arping = config['Arping'] # boolean.
+
+            if 'Arping' in config:
+                self.arping = config['Arping'] # boolean.
+
             print("Config loaded ok")
 
         except:
