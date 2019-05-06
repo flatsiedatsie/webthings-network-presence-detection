@@ -61,7 +61,7 @@ class PresenceDevice(Device):
             #print("-All properties: " + str(self.get_property_descriptions()))
 
         except Exception as ex:
-            print("Handle_device_added after adding property error: " + str(ex))
+            print("Error in handle_device_added after adding property: " + str(ex))
 
 
     def add_integer_child(self, propertyID, new_description, new_value):

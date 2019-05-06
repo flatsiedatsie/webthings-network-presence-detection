@@ -14,11 +14,11 @@ class PresenceProperty(Property):
         description -- description of the property, as a dictionary
         value -- current value of this property
         """
-        print()
+        #print()
         print("+ PROPERTY init: " + str(name))
-        print("-device: " + str(device))
+        #print("-device: " + str(device))
         #print("-name: " + str(name))
-        print("-description: " + str(description))
+        #print("-description: " + str(description))
         print("-value: " + str(value))
         try:
             Property.__init__(self, device, name, description)
@@ -55,11 +55,15 @@ class PresenceProperty(Property):
         value -- the value to update
         """
 
-        print("property -> update to: " + str(value))
-
-        if value != self.value:
-            print("-property has updated")
-            self.set_cached_value(value)
-            self.device.notify_property_changed(self)
-        else:
-            print("-property was already at the correct value")
+        #print("property -> update to: " + str(value))
+        try:
+            if value != self.value:
+                print("-property has updated to "  + str(value))
+                #self.set_cached_value_and_notify(self, value) For future version, can then remove both lines below.
+                self.set_cached_value(value)
+                self.device.notify_property_changed(self)
+            else:
+                #print("-property was already at the correct value")
+                pass
+        except:
+            print("Error updating property")

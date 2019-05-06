@@ -3,7 +3,7 @@
 import socket       # For network connections
 import platform     # For getting the operating system name
 import subprocess   # For executing a shell command
-
+import re           # For doing regex
 
 def valid_ip(ip):
     return ip.count('.') == 3 and \
@@ -65,9 +65,13 @@ def arp(ip_address):
         command = "arp " + str(ip_address)
         try:
             result = subprocess.run(command, shell=True, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
+            for line in result.stdout.split('\n'):
+                mac_addresses = re.findall(r'(([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2})', str(line))
+                if len(mac_addresses):
+                    #print("util: arp: mac in line: " + line)
+                    return str(line)
+                
             return str(result.stdout)
-            #for line in result.stdout.split('\n'):
-                #print("line: " + line)
 
         except Exception as ex:
             print("Arp error: " + str(ex))

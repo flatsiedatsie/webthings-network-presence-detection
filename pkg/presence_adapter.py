@@ -38,7 +38,7 @@ class PresenceAdapter(Adapter):
         self.pairing = False
         self.name = self.__class__.__name__
         Adapter.__init__(self, 'presence-adapter', 'presence-adapter', verbose=verbose)
-        print("Adapter ID = " + self.get_id())
+        #print("Adapter ID = " + self.get_id())
 
         self.memory_in_weeks = 10 # How many weeks a device will be remembered as a possible device.
         self.time_window = 60 # How many minutes should a device be away before we concider it away?
@@ -64,17 +64,17 @@ class PresenceAdapter(Adapter):
         if self.filename:
             try:
                 with open(self.filename) as file_object:
-                    print("Loading json..")
+                    #print("Loading json..")
                     try:
                         self.previously_found = json.load(file_object)
                     except:
-                        print("empty json file")
+                        #print("Empty json file")
                         self.previously_found = {}
                     #print("Previously found items: = " + str(self.previously_found))
 
             except (IOError, ValueError):
                 self.previously_found = {}
-                print("Failed to load JSON file")
+                print("Failed to load JSON file, generating new one.")
                 with open(self.filename, 'w') as f:
                     f.write('{}')
         else:
@@ -110,10 +110,10 @@ class PresenceAdapter(Adapter):
                 for i in range(thread_count):
                     # determine the indices of the list this thread will handle
                     start = i * split_size
-                    print("thread start = " + str(start))
+                    #print("thread start = " + str(start))
                     # special case on the last chunk to account for uneven splits
                     end = 255 if i+1 == thread_count else (i+1) * split_size
-                    print("thread end = " + str(end))
+                    #print("thread end = " + str(end))
                     # Create the thread
                     threads.append(
                         threading.Thread(target=self.scan, args=(start, end)))
@@ -152,7 +152,7 @@ class PresenceAdapter(Adapter):
     '''
 
     def unload(self):
-        print("adapter is being unloaded")
+        print("Presence detector is being unloaded")
         self.save_to_json()
 
 
@@ -172,8 +172,8 @@ class PresenceAdapter(Adapter):
 
 
             ip_address = str(self.own_ip[:self.own_ip.rfind(".")]) + "." + str(ip_byte4)
-            print()
-            print(ip_address)
+            #print()
+            #print(ip_address)
 
             # Skip our own IP address.
             if ip_address == self.own_ip:
@@ -199,7 +199,7 @@ class PresenceAdapter(Adapter):
             # If either ping or arping found a device:
             if alive:
                 self.ip_range[ip_address] = 1000 # This IP address is of high interest. For the next 1000 iterations is will get extra attention.
-                print("-ALIVE")
+                #print("-ALIVE")
                 output = arp(ip_address)
                 #print(str(output))
                 mac_addresses = re.findall(r'(([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2})', output)
@@ -218,12 +218,15 @@ class PresenceAdapter(Adapter):
                         continue
 
                     mac_address = mac_address.replace(":", "")
+                    _id = 'presence-{}'.format(mac_address)
+                    #print("early mac = " + mac_address)
 
                     # Get the basic variables
                     found_device_name = output.split(' ')[0]
+                    #print("early found device name = " + found_device_name)
 
-                    if found_device_name == '?':
-                        vendor = '?'
+                    if found_device_name == '?' or valid_ip(found_device_name):
+                        vendor = 'unnamed'
                         try:
                             # Get the vendor name, and shorten it. It removes
                             # everything after the comma. Thus "Apple, inc"
@@ -233,7 +236,7 @@ class PresenceAdapter(Adapter):
                                 vendor = vendor.split(' ', 1)[0]
                                 vendor = vendor.split(',', 1)[0]
                             else:
-                                vendor = '?'
+                                vendor = 'unnamed'
                         except ValueError:
                             pass
 
@@ -241,10 +244,13 @@ class PresenceAdapter(Adapter):
                     else:
                         found_device_name = "Presence - " + found_device_name
 
-                    print("--mac:  " + mac_address)
-                    print("--name: " + found_device_name)
 
 
+                        
+                    #print("--mac:  " + mac_address)
+                    #print("--name: " + found_device_name)
+                    #print("--_id: " + _id)
+                    
                     # Create or update items in the previously_found dictionary
                     try:
                         possibleName = ''
@@ -270,7 +276,7 @@ class PresenceAdapter(Adapter):
                                 'lastseen': now,
                             }
                         else:
-                            print(" -mac address already known")
+                            #print(" -mac address already known")
 
                             self.previously_found[mac_address]['lastseen'] = now
                             possibleName = self.previously_found[mac_address]['name']
@@ -278,23 +284,28 @@ class PresenceAdapter(Adapter):
                         print("Error updating items in the previously_found dictionary: " + str(ex))
 
 
+                    #print("--_id is now: " + _id)
                     # Present new device to the WebThings gateway, or update them.
-                    _id = 'presence-{}'.format(mac_address)
+                    
+                    #print("propos: " + str( self.get_devices() ))
+                    
                     try:
                         if _id not in self.devices:
                             # Present new device to the WebThings gateway
-                            print("not mac_address in self.devices")
+                            #print("not _id in self.devices")
                             self._add_device(str(mac_address), str(possibleName), str(ip_address)) # The device did not exist yet, so we're creating it.
-                            print("Presented new device to gateway:" + str(possibleName))
+                            #print("Presented new device to gateway:" + str(possibleName))
                         else:
                             if 'details' in self.devices[_id].properties:
                                 if ip_address != '':
-                                    print("UPDATING DETAILS for " + mac_address)
+                                    #print("UPDATING DETAILS for " + _id)
                                     self.devices[_id].properties['details'].update(str(ip_address))
                                 else:
-                                    print("ip_address was empty, so not updating the details property.")
+                                    pass
+                                    #print("ip_address was empty, so not updating the details property.")
                             else:
-                                print("The details property did not exist? Does the device even exist?")
+                                pass
+                                #print("The details property did not exist? Does the device even exist?")
                     except Exception as ex:
                         print("Error presenting new device to the WebThings gateway, or updating them.: " + str(ex))
 
@@ -331,7 +342,7 @@ class PresenceAdapter(Adapter):
     def update_the_rest(self):
         # We go over the list of ALL previously found devices, including the ones not found in the scan, and update them.
         try:
-            print()
+            #print()
             #past = datetime.now() - timedelta(hours=1)
             nowstamp = datetime.timestamp(datetime.now())
             #past = datetime.now() - timedelta(minutes=self.time_window)
@@ -340,17 +351,19 @@ class PresenceAdapter(Adapter):
 
 
             for key in self.previously_found:
-                print()
-                print("Updating: " + str(key))
+                #print()
+                
+                _id = 'presence-{}'.format(key)
+                #print("Updating: " + str(_id))
 
                 try:
                     # Make sure all devices and properties exist. Should be superfluous really.
-                    if key not in self.devices:
+                    if _id not in self.devices:
                         self._add_device(key, self.previously_found[key]['name'], '...') # The device did not exist yet, so we're creating it.
-                    if 'recently1' not in self.devices[key].properties:
-                        self.devices[key].add_boolean_child('recently1', "Recently spotted", False)
-                    if 'minutes_ago' not in self.devices[key].properties:
-                        self.devices[key].add_integer_child('minutes_ago', "Minutes ago last seen", 99999)
+                    if 'recently1' not in self.devices[_id].properties:
+                        self.devices[_id].add_boolean_child('recently1', "Recently spotted", False)
+                    if 'minutes_ago' not in self.devices[_id].properties:
+                        self.devices[_id].add_integer_child('minutes_ago', "Minutes ago last seen", 99999)
 
                     # Update devices
                     self.previously_found[key]['lastseen']
@@ -358,13 +371,13 @@ class PresenceAdapter(Adapter):
                     minutes_ago = int((nowstamp - self.previously_found[key]['lastseen']) / 60)
                     #minutes_ago = int( ( - paststamp) / 60 )
                     if minutes_ago > self.time_window:
-                        print("BYE! " + str(key) + " was last seen over " + str(self.time_window) + " ago")
-                        self.devices[key].properties['recently1'].update(False)
-                        self.devices[key].properties['minutes_ago'].update(99999) # It's not great, but what other options are there?
+                        #print("BYE! " + str(key) + " was last seen over " + str(self.time_window) + " ago")
+                        self.devices[_id].properties['recently1'].update(False)
+                        self.devices[_id].properties['minutes_ago'].update(99999) # It's not great, but what other options are there?
                     else:
-                        print("HI!  " + str(key) + " was spotted less than " + str(self.time_window) + " minutes ago")
-                        self.devices[key].properties['recently1'].update(True)
-                        self.devices[key].properties['minutes_ago'].update(minutes_ago)
+                        #print("HI!  " + str(key) + " was spotted less than " + str(self.time_window) + " minutes ago")
+                        self.devices[_id].properties['recently1'].update(True)
+                        self.devices[_id].properties['minutes_ago'].update(minutes_ago)
 
                 except Exception as ex:
                     print("Could not create or update property. Error: " + str(ex))
@@ -383,10 +396,10 @@ class PresenceAdapter(Adapter):
 
         """
         try:
-            print("adapter._add_device: " + str(name))
+            #print("adapter._add_device: " + str(name))
             device = PresenceDevice(self, mac, name, details)
             self.handle_device_added(device)
-            print("-Adapter has finished adding new device")
+            #print("-Adapter has finished adding new device for mac " + str(mac))
 
         except Exception as ex:
             print("Error adding new device: " + str(ex))
@@ -415,7 +428,7 @@ class PresenceAdapter(Adapter):
                 #lastSpottedTime = datetime.strptime('Jun 1 2005  1:33PM', '%b %d %Y %I:%M%p')
 
                 if too_old_timestamp > item['lastseen']:
-                    print(str(key) + " was too old")
+                    print(str(key) + " was pruned from the list of all found devices")
                     items_to_remove.append(key)
                 else:
                     #print(str(key) + " was not too old")
@@ -428,7 +441,7 @@ class PresenceAdapter(Adapter):
                 self.save_to_json()
 
         except Exception as ex:
-            print("Error pruning: " + str(ex))
+            print("Error pruning found devices list: " + str(ex))
 
 
 
