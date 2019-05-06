@@ -1,8 +1,8 @@
 {
   "name": "network-presence-detection-adapter",
   "display_name": "Network presence detector",
-  "version": "0.0.2",
-  "description": "Check if devices are on your network or not",
+  "version": "0.0.3",
+  "description": "Check if devices are on your network",
   "author": "Flatdiedatsie",
   "main": "main.py",
   "keywords": [
@@ -39,17 +39,23 @@
       "max": 2
     },
     "plugin": true,
-    "exec": "python3 {path}/main.py",
-    "config": {
+    "exec": "python3 {path}/bootstrap.py",
+   "config": {
+      "Time window":"60",
       "Memory": "10"
     },
     "schema": {
       "type": "object",
       "required": [
+        "Time window",
         "Memory"
       ],
       "properties": {
-        "Memory": {
+        "Time window": {
+          "type": "number",
+          "description": "How many minutes can a device disappear before it is marked offline? The default is 60 minutes, the maximum is 1380 (23 hours)."
+        },
+      "Memory": {
           "type": "number",
           "description": "How many weeks should the add-on remember (and keep presenting) devices it has once seen? The default setting is 10 weeks."
         }
