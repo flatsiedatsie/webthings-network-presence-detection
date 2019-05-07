@@ -3,7 +3,7 @@
   "display_name": "Network presence detector",
   "version": "0.0.3",
   "description": "Check if devices are on your network",
-  "author": "Flatdiedatsie",
+  "author": "Flatsiedatsie",
   "main": "main.py",
   "keywords": [
     "mozilla",
@@ -43,7 +43,7 @@
     "config": {
       "Time window": 60,
       "Memory": 10,
-      "Arping": true
+      "Arping": false
     },
     "schema": {
       "type": "object",
