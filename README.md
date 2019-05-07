@@ -8,5 +8,10 @@ Using this add-on, devices on your local network can be added as a 'thing' in th
 - If the human-readable name of a device is not known, then it will try to look-up the device manufacturer, and use that as a name. The add-on does _not_ connect to the internet to do this. It is done locally, on the gateway, so your privacy is protected.
 
 ## Limitations
-- This add-on uses 'ping', 'arping' and 'arp' to scan the local network.
+- This add-on uses 'ping', 'arping' and 'arp' to scan the local network. Arping can spot more devices, but requires you to install it on your system manually.
 - A thing is linked to a mac-address of a device. Nowadays some devices, like iphones, change their mac-address once in a while to make tracking difficult. This is a great privacy feature, but it may also hinder this add-ons ability to track (i)phone presence.
+
+## Thanks to
+
+Michael Stegeman of the Mozilla Foundation helped a lot in getting this add-on to work optimally.
+https://github.com/mrstegeman
