@@ -41,15 +41,16 @@
     "plugin": true,
     "exec": "python3 {path}/main.py",
     "config": {
-      "Time window": "60",
-      "Memory": "10",
-      "Arping": true,
+      "Time window": 60,
+      "Memory": 10,
+      "Arping": true
     },
     "schema": {
       "type": "object",
       "required": [
         "Time window",
-        "Memory"
+        "Memory",
+        "Arping"
       ],
       "properties": {
         "Time window": {
