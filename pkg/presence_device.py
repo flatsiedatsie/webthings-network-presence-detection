@@ -8,7 +8,7 @@ from .presence_property import PresenceProperty
 class PresenceDevice(Device):
     """network presence device type."""
 
-    def __init__(self, adapter, mac, name, details):
+    def __init__(self, adapter, _id, name, details):
         """
         Initialize the object.
 
@@ -20,7 +20,8 @@ class PresenceDevice(Device):
 
         print()
         print("+ DEVICE init: " + str(name))
-        Device.__init__(self, adapter, 'presence-{}'.format(mac))
+        #Device.__init__(self, adapter, 'presence-{}'.format(mac))
+        Device.__init__(self, adapter, _id)
 
         self.adapter = adapter
         self.name = name

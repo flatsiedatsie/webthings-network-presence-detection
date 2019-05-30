@@ -31,10 +31,10 @@ class PresenceProperty(Property):
 
             self.set_cached_value(value)
             self.device.notify_property_changed(self)
-            print("property init done")
+            #print("property init done")
 
         except Exception as ex:
-            print("inside adding property error: " + str(ex))
+            print("property: could not init. Error: " + str(ex))
 
 
     def set_value(self, value):

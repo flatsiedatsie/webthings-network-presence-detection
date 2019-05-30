@@ -43,6 +43,7 @@ class PresenceAdapter(Adapter):
                          verbose=verbose)
         #print("Adapter ID = " + self.get_id())
 
+        self.DEBUG = True
         self.memory_in_weeks = 10 # How many weeks a device will be remembered as a possible device.
         self.time_window = 60 # How many minutes should a device be away before we concider it away?
         self.arping = False # Does the user also want to try using arping?
@@ -91,9 +92,9 @@ class PresenceAdapter(Adapter):
         for key in self.previously_found:
             self._add_device(str(key), str(self.previously_found[key]['name']), str('...')) # Adding the device
 
-            _id = 'presence-{}'.format(key)
-            self.devices[_id].add_boolean_child('recently1', "Recently spotted", False)
-            self.devices[_id].add_integer_child('minutes_ago', "Minutes ago last seen", 99999)
+            #_id = 'presence-{}'.format(key)
+            self.devices[key].add_boolean_child('recently1', "Recently spotted", False)
+            self.devices[key].add_integer_child('minutes_ago', "Minutes ago last seen", 99999)
 
 
         # Start the thread that updates the 'minutes ago' countdown on all lastseen properties.
@@ -160,6 +161,21 @@ class PresenceAdapter(Adapter):
         self.save_to_json()
 
 
+    def remove_thing(self, device_id):
+        print("-----REMOVING------")
+
+        try:
+            #print("THING TO REMOVE:" + str(self.devices[device_id]))
+            del self.previously_found[device_id]
+            #print("2")
+            obj = self.get_device(device_id)
+            #print("3")
+            self.handle_device_removed(obj)
+            print("Removed presence detection device")
+        except:
+            print("REMOVING PRESENCE DETECTION THING FAILED")
+        #del self.devices[device_id]
+        self.should_save = True # saving changes to the json persistence file
 
 
     def scan(self, start, end):
@@ -259,9 +275,9 @@ class PresenceAdapter(Adapter):
                     # Create or update items in the previously_found dictionary
                     try:
                         possibleName = ''
-                        if mac_address not in self.previously_found:
+                        if _id not in self.previously_found:
 
-                            self.should_save = True
+                            self.should_save = True # We will be adding this new device to the list, and then save that updated list.
 
                             i = 2 # We skip "1" as a number. So we will get names like "Apple" and then "Apple 2", "Apple 3", and so on.
                             possibleName = found_device_name
@@ -276,15 +292,15 @@ class PresenceAdapter(Adapter):
                                         possibleName = found_device_name + " " + str(i)
                                         i += 1
 
-                            self.previously_found[str(mac_address)] = {
+                            self.previously_found[str(_id)] = { # adding it to the internal object
                                 'name': str(possibleName),
                                 'lastseen': now,
                             }
                         else:
                             #print(" -mac address already known")
 
-                            self.previously_found[mac_address]['lastseen'] = now
-                            possibleName = self.previously_found[mac_address]['name']
+                            self.previously_found[_id]['lastseen'] = now
+                            possibleName = self.previously_found[_id]['name']
                     except Exception as ex:
                         print("Error updating items in the previously_found dictionary: " + str(ex))
 
@@ -295,10 +311,10 @@ class PresenceAdapter(Adapter):
                     #print("propos: " + str( self.get_devices() ))
                     
                     try:
-                        if _id not in self.devices:
+                        if _id not in self.devices: # Add device if it does not exist.
                             # Present new device to the WebThings gateway
                             #print("not _id in self.devices")
-                            self._add_device(str(mac_address), str(possibleName), str(ip_address)) # The device did not exist yet, so we're creating it.
+                            self._add_device(str(_id), str(possibleName), str(ip_address)) # The device did not exist yet, so we're creating it.
                             #print("Presented new device to gateway:" + str(possibleName))
                         else:
                             if 'details' in self.devices[_id].properties:
@@ -358,31 +374,32 @@ class PresenceAdapter(Adapter):
             for key in self.previously_found:
                 #print()
                 
-                _id = 'presence-{}'.format(key)
+                #_id = 'presence-{}'.format(key)
                 #print("Updating: " + str(_id))
 
                 try:
                     # Make sure all devices and properties exist. Should be superfluous really.
-                    if _id not in self.devices:
+                    if key not in self.devices:
                         self._add_device(key, self.previously_found[key]['name'], '...') # The device did not exist yet, so we're creating it.
-                    if 'recently1' not in self.devices[_id].properties:
-                        self.devices[_id].add_boolean_child('recently1', "Recently spotted", False)
-                    if 'minutes_ago' not in self.devices[_id].properties:
-                        self.devices[_id].add_integer_child('minutes_ago', "Minutes ago last seen", 99999)
+                    if 'recently1' not in self.devices[key].properties:
+                        self.devices[key].add_boolean_child('recently1', "Recently spotted", False)
+                    if 'minutes_ago' not in self.devices[key].properties:
+                        self.devices[key].add_integer_child('minutes_ago', "Minutes ago last seen", 99999)
 
                     # Update devices
                     self.previously_found[key]['lastseen']
 
                     minutes_ago = int((nowstamp - self.previously_found[key]['lastseen']) / 60)
+                    #print("-Minutes ago: " + str(minutes_ago))
                     #minutes_ago = int( ( - paststamp) / 60 )
                     if minutes_ago > self.time_window:
                         #print("BYE! " + str(key) + " was last seen over " + str(self.time_window) + " ago")
-                        self.devices[_id].properties['recently1'].update(False)
-                        self.devices[_id].properties['minutes_ago'].update(99999) # It's not great, but what other options are there?
+                        self.devices[key].properties['recently1'].update(False)
+                        self.devices[key].properties['minutes_ago'].update(99999) # It's not great, but what other options are there?
                     else:
                         #print("HI!  " + str(key) + " was spotted less than " + str(self.time_window) + " minutes ago")
-                        self.devices[_id].properties['recently1'].update(True)
-                        self.devices[_id].properties['minutes_ago'].update(minutes_ago)
+                        self.devices[key].properties['recently1'].update(True)
+                        self.devices[key].properties['minutes_ago'].update(minutes_ago)
 
                 except Exception as ex:
                     print("Could not create or update property. Error: " + str(ex))
@@ -469,7 +486,9 @@ class PresenceAdapter(Adapter):
 
             self.memory_in_weeks = clamp(int(config['Memory']), 1, 50) # The variable is clamped: it is forced to be between 1 and 50.
             self.time_window = clamp(int(config['Time window']), 1, 1380) # 'Grace period' could also be a good name.
-
+            print("Memory value from settings page: " + str(self.memory_in_weeks))
+            print("Time window value from settings page: " + str(self.time_window))
+            
             if 'Arping' in config:
                 self.arping = config['Arping'] # boolean.
 
@@ -482,7 +501,6 @@ class PresenceAdapter(Adapter):
 
     def save_to_json(self):
         try:
-            print()
             print("Saving updated list of found devices to json file")
             if self.previously_found and self.filename:
                 with open(self.filename, 'w') as fp:
