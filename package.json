@@ -1,9 +1,9 @@
 {
   "name": "network-presence-detection-adapter",
   "display_name": "Network presence detector",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Check if devices are on your network",
-  "author": "Flatsiedatsie",
+  "author": "Flatdiedatsie",
   "main": "main.py",
   "keywords": [
     "mozilla",
@@ -63,7 +63,7 @@
         },
         "Arping": {
           "type": "boolean",
-          "description": "Use arping? It can only be used if you have it installed on your system."
+          "description": "Use arping? It improved detection of mobile phones, but can only be used if you have it installed on your system."
         }
       }
     }
