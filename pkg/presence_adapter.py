@@ -43,7 +43,7 @@ class PresenceAdapter(Adapter):
                          verbose=verbose)
         #print("Adapter ID = " + self.get_id())
 
-        self.DEBUG = True
+        self.DEBUG = False #True
         self.memory_in_weeks = 10 # How many weeks a device will be remembered as a possible device.
         self.time_window = 60 # How many minutes should a device be away before we concider it away?
         self.arping = False # Does the user also want to try using arping?
@@ -103,22 +103,24 @@ class PresenceAdapter(Adapter):
         #t.start()
 
 
-        # We continuously scan for new devices, in an endless loop.
+        # We continuously scan for new devices, in an endless loop. The 255 addresses are split into a few chunks, and each chunk is given to a separate thread.
         self.own_ip = get_ip()
         if valid_ip(self.own_ip):
             while True:
                 #def split_processing(items, num_splits=4):
                 old_previous_found_count = len(self.previously_found)
                 thread_count = 5
-                split_size = 255 // thread_count
+                split_size = 51
                 threads = []
                 for i in range(thread_count):
                     # determine the indices of the list this thread will handle
                     start = i * split_size
-                    #print("thread start = " + str(start))
+                    if self.DEBUG:
+                        print("thread start = " + str(start))
                     # special case on the last chunk to account for uneven splits
                     end = 255 if i+1 == thread_count else (i+1) * split_size
-                    #print("thread end = " + str(end))
+                    if self.DEBUG:
+                        print("thread end = " + str(end))
                     # Create the thread
                     threads.append(
                         threading.Thread(target=self.scan, args=(start, end)))
@@ -129,6 +131,8 @@ class PresenceAdapter(Adapter):
                 for t in threads:
                     t.join()
 
+                if self.DEBUG:
+                    print("All threads are done")
                 # If new devices were found, save the JSON file.
                 if len(self.previously_found) > old_previous_found_count:
                     self.save_to_json()
@@ -162,7 +166,8 @@ class PresenceAdapter(Adapter):
 
 
     def remove_thing(self, device_id):
-        print("-----REMOVING------")
+        if self.DEBUG:
+            print("-----REMOVING------")
 
         try:
             #print("THING TO REMOVE:" + str(self.devices[device_id]))
@@ -185,6 +190,12 @@ class PresenceAdapter(Adapter):
 
         self.should_save = False # We only save found_devices to a file if new devices have been found during this scan.
 
+        # skip broadcast addresses
+        if start == 0:
+            start = 1
+        if end == 255:
+            end = 254
+            
         for ip_byte4 in range(start, end):
 
             # when halfway through, start a new thread.
