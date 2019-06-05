@@ -104,7 +104,7 @@ class PresenceAdapter(Adapter):
 
 
         # We continuously scan for new devices, in an endless loop. The 255 addresses are split into a few chunks, and each chunk is given to a separate thread.
-        self.own_ip = get_ip()
+        self.own_ip = get_ip(self.defaultIpAdress)
         if valid_ip(self.own_ip):
             while True:
                 #def split_processing(items, num_splits=4):
@@ -502,6 +502,11 @@ class PresenceAdapter(Adapter):
             
             if 'Arping' in config:
                 self.arping = config['Arping'] # boolean.
+
+            if 'Default IP adress' in config:
+                self.defaultIpAdress = config['Default IP adress']; #string
+            else
+                self.defaultIpAdress = '192.168.1.1'
 
             print("Config loaded ok")
 
