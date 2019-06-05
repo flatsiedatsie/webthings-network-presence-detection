@@ -55,6 +55,7 @@ class PresenceAdapter(Adapter):
         self.deep_scan_frequency = 10 # once every 10 scans we do a deep scan.
         self.scan_count = 0 # Used by the deep scan system.
         self.filename = None
+        self.debug = False
 
         for path in _CONFIG_PATHS:
             if os.path.isdir(path):
@@ -502,6 +503,9 @@ class PresenceAdapter(Adapter):
             
             if 'Arping' in config:
                 self.arping = config['Arping'] # boolean.
+
+            if 'Debug messages' in config:
+                self.debug = config['Debug messages'] # boolean
 
             print("Config loaded ok")
 
