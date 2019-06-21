@@ -8,7 +8,7 @@ import re
 import threading
 
 from .presence_device import PresenceDevice
-from .util import valid_ip, valid_mac, clamp, get_ip, ping, arping, arp
+from .util import valid_ip, valid_mac, clamp, get_ip, ping, arping, arp, printDebug
 
 OUI_FILE = 'oui.txt'
 SEPARATORS = ('-', ':')
@@ -41,7 +41,7 @@ class PresenceAdapter(Adapter):
                          'network-presence-detection-adapter',
                          'network-presence-detection-adapter',
                          verbose=verbose)
-        #print("Adapter ID = " + self.get_id())
+        print("Adapter ID = " + self.get_id())
 
         self.DEBUG = False #True
         self.memory_in_weeks = 10 # How many weeks a device will be remembered as a possible device.
@@ -70,13 +70,13 @@ class PresenceAdapter(Adapter):
         if self.filename:
             try:
                 with open(self.filename) as file_object:
-                    #print("Loading json..")
+                    printDebug("Loading json..", self.DEBUG)
                     try:
                         self.previously_found = json.load(file_object)
                     except:
-                        #print("Empty json file")
+                        printDebug("Empty json file", self.DEBUG)
                         self.previously_found = {}
-                    #print("Previously found items: = " + str(self.previously_found))
+                    printDebug("Previously found items: = " + str(self.previously_found), self.DEBUG)
 
             except (IOError, ValueError):
                 self.previously_found = {}
@@ -116,12 +116,10 @@ class PresenceAdapter(Adapter):
                 for i in range(thread_count):
                     # determine the indices of the list this thread will handle
                     start = i * split_size
-                    if self.DEBUG:
-                        print("thread start = " + str(start))
+                    printDebug("thread start = " + str(start), self.DEBUG)
                     # special case on the last chunk to account for uneven splits
                     end = 255 if i+1 == thread_count else (i+1) * split_size
-                    if self.DEBUG:
-                        print("thread end = " + str(end))
+                    printDebug("thread end = " + str(end), self.DEBUG)
                     # Create the thread
                     threads.append(
                         threading.Thread(target=self.scan, args=(start, end)))
@@ -132,8 +130,7 @@ class PresenceAdapter(Adapter):
                 for t in threads:
                     t.join()
 
-                if self.DEBUG:
-                    print("All threads are done")
+                printDebug("All threads are done", self.DEBUG)
                 # If new devices were found, save the JSON file.
                 if len(self.previously_found) > old_previous_found_count:
                     self.save_to_json()
@@ -167,11 +164,10 @@ class PresenceAdapter(Adapter):
 
 
     def remove_thing(self, device_id):
-        if self.DEBUG:
-            print("-----REMOVING------")
+        printDebug("-----REMOVING------", self.DEBUG)
 
         try:
-            #print("THING TO REMOVE:" + str(self.devices[device_id]))
+            printDebug("THING TO REMOVE:" + str(self.devices[device_id]), self.DEBUG)
             del self.previously_found[device_id]
             #print("2")
             obj = self.get_device(device_id)
@@ -204,8 +200,8 @@ class PresenceAdapter(Adapter):
 
 
             ip_address = str(self.own_ip[:self.own_ip.rfind(".")]) + "." + str(ip_byte4)
-            #print()
-            #print(ip_address)
+            printDebug("", self.DEBUG)
+            printDebug(ip_address, self.DEBUG)
 
             # Skip our own IP address.
             if ip_address == self.own_ip:
@@ -221,7 +217,7 @@ class PresenceAdapter(Adapter):
             if self.scan_count == 0:
                 ping_count = 4
 
-            #print("-scan intensity: " + str(ping_count))
+            printDebug("-scan intensity: " + str(ping_count), self.DEBUG)
             alive = False   # holds whether we got any response.
             if ping(ip_address, ping_count) == 0: # 0 means everything went ok, so a device was found.
                 alive = True
@@ -232,9 +228,9 @@ class PresenceAdapter(Adapter):
             # If either ping or arping found a device:
             if alive:
                 self.ip_range[ip_address] = 1000 # This IP address is of high interest. For the next 1000 iterations is will get extra attention.
-                #print("-ALIVE")
+                printDebug("-ALIVE", self.DEBUG)
                 output = arp(ip_address)
-                #print(str(output))
+                printDebug(str(output), self.DEBUG)
                 mac_addresses = re.findall(r'(([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2})', output)
 
                 now = datetime.timestamp(datetime.now())
@@ -252,11 +248,11 @@ class PresenceAdapter(Adapter):
 
                     mac_address = mac_address.replace(":", "")
                     _id = 'presence-{}'.format(mac_address)
-                    #print("early mac = " + mac_address)
+                    printDebug("early mac = " + mac_address, self.DEBUG)
 
                     # Get the basic variables
                     found_device_name = output.split(' ')[0]
-                    #print("early found device name = " + found_device_name)
+                    printDebug("early found device name = " + found_device_name, self.DEBUG)
 
                     if found_device_name == '?' or valid_ip(found_device_name):
                         vendor = 'unnamed'
@@ -280,9 +276,9 @@ class PresenceAdapter(Adapter):
 
 
                         
-                    #print("--mac:  " + mac_address)
-                    #print("--name: " + found_device_name)
-                    #print("--_id: " + _id)
+                    printDebug("--mac:  " + mac_address, self.DEBUG)
+                    printDebug("--name: " + found_device_name, self.DEBUG)
+                    printDebug("--_id: " + _id, self.DEBUG)
                     
                     # Create or update items in the previously_found dictionary
                     try:
@@ -309,7 +305,7 @@ class PresenceAdapter(Adapter):
                                 'lastseen': now,
                             }
                         else:
-                            #print(" -mac address already known")
+                            printDebug(" -mac address already known", self.DEBUG)
 
                             self.previously_found[_id]['lastseen'] = now
                             possibleName = self.previously_found[_id]['name']
@@ -317,7 +313,7 @@ class PresenceAdapter(Adapter):
                         print("Error updating items in the previously_found dictionary: " + str(ex))
 
 
-                    #print("--_id is now: " + _id)
+                    printDebug("--_id is now: " + _id, self.DEBUG)
                     # Present new device to the WebThings gateway, or update them.
                     
                     #print("propos: " + str( self.get_devices() ))
@@ -325,20 +321,20 @@ class PresenceAdapter(Adapter):
                     try:
                         if _id not in self.devices: # Add device if it does not exist.
                             # Present new device to the WebThings gateway
-                            #print("not _id in self.devices")
+                            printDebug("not _id in self.devices", self.DEBUG)
                             self._add_device(str(_id), str(possibleName), str(ip_address)) # The device did not exist yet, so we're creating it.
-                            #print("Presented new device to gateway:" + str(possibleName))
+                            printDebug("Presented new device to gateway:" + str(possibleName), self.DEBUG)
                         else:
                             if 'details' in self.devices[_id].properties:
                                 if ip_address != '':
-                                    #print("UPDATING DETAILS for " + _id)
+                                    printDebug("UPDATING DETAILS for " + _id, self.DEBUG)
                                     self.devices[_id].properties['details'].update(str(ip_address))
                                 else:
                                     pass
-                                    #print("ip_address was empty, so not updating the details property.")
+                                    printDebug("ip_address was empty, so not updating the details property.", self.DEBUG)
                             else:
                                 pass
-                                #print("The details property did not exist? Does the device even exist?")
+                                printDebug("The details property did not exist? Does the device even exist?", self.DEBUG)
                     except Exception as ex:
                         print("Error presenting new device to the WebThings gateway, or updating them.: " + str(ex))
 
@@ -375,7 +371,7 @@ class PresenceAdapter(Adapter):
     def update_the_rest(self):
         # We go over the list of ALL previously found devices, including the ones not found in the scan, and update them.
         try:
-            #print()
+            printDebug("", self.DEBUG)
             #past = datetime.now() - timedelta(hours=1)
             nowstamp = datetime.timestamp(datetime.now())
             #past = datetime.now() - timedelta(minutes=self.time_window)
@@ -384,7 +380,7 @@ class PresenceAdapter(Adapter):
 
 
             for key in self.previously_found:
-                #print()
+                printDebug("", self.DEBUG)
                 
                 #_id = 'presence-{}'.format(key)
                 #print("Updating: " + str(_id))
@@ -402,14 +398,14 @@ class PresenceAdapter(Adapter):
                     self.previously_found[key]['lastseen']
 
                     minutes_ago = int((nowstamp - self.previously_found[key]['lastseen']) / 60)
-                    #print("-Minutes ago: " + str(minutes_ago))
+                    printDebug("-Minutes ago: " + str(minutes_ago), self.DEBUG)
                     #minutes_ago = int( ( - paststamp) / 60 )
                     if minutes_ago > self.time_window:
-                        #print("BYE! " + str(key) + " was last seen over " + str(self.time_window) + " ago")
+                        printDebug("BYE! " + str(key) + " was last seen over " + str(self.time_window) + " ago", self.DEBUG)
                         self.devices[key].properties['recently1'].update(False)
                         self.devices[key].properties['minutes_ago'].update(99999) # It's not great, but what other options are there?
                     else:
-                        #print("HI!  " + str(key) + " was spotted less than " + str(self.time_window) + " minutes ago")
+                        printDebug("HI!  " + str(key) + " was spotted less than " + str(self.time_window) + " minutes ago", self.DEBUG)
                         self.devices[key].properties['recently1'].update(True)
                         self.devices[key].properties['minutes_ago'].update(minutes_ago)
 
@@ -430,10 +426,10 @@ class PresenceAdapter(Adapter):
 
         """
         try:
-            #print("adapter._add_device: " + str(name))
+            printDebug("adapter._add_device: " + str(name), self.DEBUG)
             device = PresenceDevice(self, mac, name, details)
             self.handle_device_added(device)
-            #print("-Adapter has finished adding new device for mac " + str(mac))
+            printDebug("-Adapter has finished adding new device for mac " + str(mac), self.DEBUG)
 
         except Exception as ex:
             print("Error adding new device: " + str(ex))
@@ -449,13 +445,13 @@ class PresenceAdapter(Adapter):
         try:
             print()
             too_old = datetime.now() - timedelta(weeks=self.memory_in_weeks)
-            #print("Too old threshold: " + str(too_old))
+            printDebug("Too old threshold: " + str(too_old), self.DEBUG)
             too_old_timestamp = datetime.timestamp(too_old)
 
             items_to_remove = []
 
             for key in self.previously_found:
-                #print("Updating: " + str(key))# + "," + str(item))
+                printDebug("Updating: " + str(key), self.DEBUG)# + "," + str(item)
 
                 item = self.previously_found[key]
 
@@ -465,7 +461,7 @@ class PresenceAdapter(Adapter):
                     print(str(key) + " was pruned from the list of all found devices")
                     items_to_remove.append(key)
                 else:
-                    #print(str(key) + " was not too old")
+                    printDebug(str(key) + " was not too old", self.DEBUG)
                     pass
 
             if len(items_to_remove):
@@ -506,6 +502,9 @@ class PresenceAdapter(Adapter):
 
             if 'Default IP adress' in config:
                 self.defaultIpAdress = config['Default IP adress']; #string
+
+            if 'Debug messages' in config:
+                self.DEBUG = config['Debug messages'] # boolean
 
             print("Config loaded ok")
 

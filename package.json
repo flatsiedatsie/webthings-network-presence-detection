@@ -68,6 +68,10 @@
         "Default IP adress": {
           "type": "string",
           "description": "Default IP adress to use."
+        },
+        "Debug messages": {
+          "type": "boolean",
+          "description": "Whether debug messages should be logged."
         }
       }
     }
