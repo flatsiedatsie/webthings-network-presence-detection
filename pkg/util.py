@@ -78,3 +78,7 @@ def arp(ip_address):
             result = 'error'
         return result
         #return str(subprocess.check_output(command, shell=True).decode())
+
+def printDebug(message, debug):
+    if debug:
+        print(message)
