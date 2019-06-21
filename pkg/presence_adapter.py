@@ -55,7 +55,7 @@ class PresenceAdapter(Adapter):
         self.deep_scan_frequency = 10 # once every 10 scans we do a deep scan.
         self.scan_count = 0 # Used by the deep scan system.
         self.filename = None
-        self.defaultIpAdress = '192.168.1.1'
+        self.defaultIpAddress = ''
 
         for path in _CONFIG_PATHS:
             if os.path.isdir(path):
@@ -105,7 +105,7 @@ class PresenceAdapter(Adapter):
 
 
         # We continuously scan for new devices, in an endless loop. The 255 addresses are split into a few chunks, and each chunk is given to a separate thread.
-        self.own_ip = get_ip(self.defaultIpAdress)
+        self.own_ip = self.defaultIpAddress if self.defaultIpAddress != '' else get_ip()
         if valid_ip(self.own_ip):
             while True:
                 #def split_processing(items, num_splits=4):
@@ -501,7 +501,7 @@ class PresenceAdapter(Adapter):
                 self.arping = config['Arping'] # boolean.
 
             if 'Default IP adress' in config:
-                self.defaultIpAdress = config['Default IP adress']; #string
+                self.defaultIpAddress = config['Default IP adress']; #string
 
             if 'Debug messages' in config:
                 self.DEBUG = config['Debug messages'] # boolean
