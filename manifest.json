@@ -1,0 +1,46 @@
+{
+  "author": "Flatsiedatsie",
+  "description": "Check if devices are on your network",
+  "gateway_specific_settings": {
+    "webthings": {
+      "exec": "python3 {path}/main.py",
+      "primary_type": "adapter",
+      "strict_max_version": "*",
+      "strict_min_version": "0.10.0"
+    }
+  },
+  "homepage_url": "https://github.com/flatsiedatsie/Webthings-network-presence-detection",
+  "id": "network-presence-detection-adapter",
+  "license": "MPL-2.0",
+  "manifest_version": 1,
+  "name": "Network presence detector",
+  "options": {
+    "default": {
+      "Time window": 10,
+			"Target IP": "",
+      "Debugging": false
+    },
+    "schema": {
+      "properties": {
+        "Time window": {
+          "description": "How many minutes can a device disappear before it is marked offline? The default is 10 minutes, the minimum is 1, the maximum is 10800 (7 days).",
+          "type": "number"
+        },
+        "Target IP": {
+          "type": "string",
+          "description": "Can be used to override the add-on to target a specific IP address range. For example, paste in 192.168.8.10 if you want to scan 192.168.8.2 through 192.168.8.254. Leave empty to use the controller's own IP address."
+        },
+        "Debugging": {
+          "description": "Debugging allows you to diagnose any issues with the add-on. If enabled it will result in a lot more debug data in the internal log (which can be found under Settings -> Seveloper -> View internal logs).",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "Time window"
+      ],
+      "type": "object"
+    }
+  },
+  "short_name": "Network pres",
+  "version": "0.1.0"
+}

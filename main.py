@@ -37,7 +37,7 @@ if __name__ == '__main__':
 
     signal.signal(signal.SIGINT, cleanup)
     signal.signal(signal.SIGTERM, cleanup)
-    _ADAPTER = PresenceAdapter(verbose=True)
+    _ADAPTER = PresenceAdapter(verbose=False)
 
     # Wait until the proxy stops running, indicating that the gateway shut us
     # down.

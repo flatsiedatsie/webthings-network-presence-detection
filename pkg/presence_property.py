@@ -1,7 +1,6 @@
 """Network presence adapter for Mozilla WebThings Gateway."""
 
 from gateway_addon import Property
-from .util import printDebug
 
 class PresenceProperty(Property):
     """Network presence property type."""
@@ -15,11 +14,11 @@ class PresenceProperty(Property):
         description -- description of the property, as a dictionary
         value -- current value of this property
         """
-        printDebug("", device.adapter.DEBUG)
+        #print()
         print("+ PROPERTY init: " + str(name))
-        printDebug("-device: " + str(device), device.adapter.DEBUG)
-        printDebug("-name: " + str(name), device.adapter.DEBUG)
-        printDebug("-description: " + str(description), device.adapter.DEBUG)
+        #print("-device: " + str(device))
+        #print("-name: " + str(name))
+        #print("-description: " + str(description))
         print("-value: " + str(value))
         try:
             Property.__init__(self, device, name, description)
@@ -32,7 +31,7 @@ class PresenceProperty(Property):
 
             self.set_cached_value(value)
             self.device.notify_property_changed(self)
-            printDebug("property init done", self.device.adapter.DEBUG)
+            #print("property init done")
 
         except Exception as ex:
             print("property: could not init. Error: " + str(ex))
@@ -56,15 +55,15 @@ class PresenceProperty(Property):
         value -- the value to update
         """
 
-        printDebug("property -> update to: " + str(value), self.device.adapter.DEBUG)
+        #print("property -> update to: " + str(value))
         try:
             if value != self.value:
-                printDebug("-property has updated to "  + str(value), self.device.adapter.DEBUG)
+                #print("-property has updated to "  + str(value))
                 #self.set_cached_value_and_notify(self, value) For future version, can then remove both lines below.
                 self.set_cached_value(value)
                 self.device.notify_property_changed(self)
             else:
-                printDebug("-property was already at the correct value", self.device.adapter.DEBUG)
+                #print("-property was already at the correct value")
                 pass
         except:
             print("Error updating property")

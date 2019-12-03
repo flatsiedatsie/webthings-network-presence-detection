@@ -1,7 +1,7 @@
 {
   "name": "network-presence-detection-adapter",
   "display_name": "Network presence detector",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "description": "Check if devices are on your network",
   "author": "Flatsiedatsie",
   "main": "main.py",
@@ -41,37 +41,26 @@
     "plugin": true,
     "exec": "python3 {path}/main.py",
     "config": {
-      "Time window": 60,
-      "Memory": 10,
-      "Arping": false
+      "Time window": 10,
+      "Debugging": false
     },
     "schema": {
       "type": "object",
       "required": [
-        "Time window",
-        "Memory",
-        "Arping"
+        "Time window"
       ],
       "properties": {
         "Time window": {
           "type": "number",
-          "description": "How many minutes can a device disappear before it is marked offline? The default is 60 minutes, the maximum is 1380 (23 hours)."
+          "description": "How many minutes can a device disappear before it is marked offline? The default is 10 minutes, the maximum is 10800 (7 days)."
         },
-        "Memory": {
-          "type": "number",
-          "description": "How many weeks should the add-on remember (and keep presenting) devices it has once seen? The default setting is 10 weeks."
-        },
-        "Arping": {
-          "type": "boolean",
-          "description": "Use arping? It improved detection of mobile phones, but can only be used if you have it installed on your system."
-        },
-        "Default IP adress": {
+        "Target IP": {
           "type": "string",
-          "description": "Default IP adress to use."
+          "description": "Can be used to override the add-on to target a specific IP address range. For example, paste in 192.168.8.10 if you want to scan 192.168.8.2 through 192.168.8.254. Leave empty to use the controller's own IP address."
         },
-        "Debug messages": {
-          "type": "boolean",
-          "description": "Whether debug messages should be logged."
+        "Debugging": {
+          "description": "Debugging allows you to diagnose any issues with the add-on. If enabled it will result in a lot more debug data in the internal log (which can be found under Settings -> Seveloper -> View internal logs).",
+          "type": "boolean"
         }
       }
     }

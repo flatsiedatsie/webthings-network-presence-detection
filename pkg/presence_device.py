@@ -2,7 +2,6 @@
 
 from gateway_addon import Device
 from .presence_property import PresenceProperty
-from.util import printDebug
 
 
 
@@ -28,8 +27,8 @@ class PresenceDevice(Device):
         self.name = name
         self.description = "A device on the local network"
         self._type = ['BinarySensor']
-        self.properties = {}
-        printDebug("device self.properties at init: " + str(self.properties), self.adapter.DEBUG)
+        #self.properties = {}
+        #print("device self.properties at init: " + str(self.properties))
         #self.connected_notify(True)
 
         self.properties['details'] = PresenceProperty(
@@ -60,7 +59,7 @@ class PresenceDevice(Device):
         try:
             self.notify_property_changed(self.properties[propertyID])
             self.adapter.handle_device_added(self)
-            printDebug("-All properties: " + str(self.get_property_descriptions()), self.adapter.DEBUG)
+            print("-All properties: " + str(self.get_property_descriptions()))
 
         except Exception as ex:
             print("Error in handle_device_added after adding property: " + str(ex))
@@ -82,7 +81,7 @@ class PresenceDevice(Device):
         try:
             self.notify_property_changed(self.properties[propertyID])
             self.adapter.handle_device_added(self)
-            printDebug("-All properties: " + str(self.get_property_descriptions()), self.adapter.DEBUG)
+            #print("-All properties: " + str(self.get_property_descriptions()))
 
         except Exception as ex:
             print("Handle_device_added after adding property error: " + str(ex))
