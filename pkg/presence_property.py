@@ -14,15 +14,8 @@ class PresenceProperty(Property):
         description -- description of the property, as a dictionary
         value -- current value of this property
         """
-        #print()
-        print("+ PROPERTY init: " + str(name))
-        #print("-device: " + str(device))
-        #print("-name: " + str(name))
-        #print("-description: " + str(description))
-        print("-value: " + str(value))
         try:
             Property.__init__(self, device, name, description)
-
 
             self.device = device
             self.name = name
@@ -31,8 +24,13 @@ class PresenceProperty(Property):
 
             self.set_cached_value(value)
             self.device.notify_property_changed(self)
-            #print("property init done")
-
+            
+            if self.device.adapter.DEBUG:
+                print("+ PROPERTY init: " + str(name))
+                #print("-device: " + str(device))
+                #print("-name: " + str(name))
+                #print("-description: " + str(description))
+                print("  -value: " + str(value))
         except Exception as ex:
             print("property: could not init. Error: " + str(ex))
 
@@ -43,9 +41,10 @@ class PresenceProperty(Property):
 
         value -- the value to set
         """
-
-        print("property -> set_value")
-        print("->name " + str(self.name))
+        # Theoretically this is never ever called.
+        if self.device.adapter.DEBUG:
+            print("property -> set_value")
+            print("->value " + str(value))
 
 
     def update(self, value):

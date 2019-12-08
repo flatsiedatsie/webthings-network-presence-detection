@@ -18,8 +18,7 @@ class PresenceDevice(Device):
         index -- index inside parent device
         """
 
-        print()
-        print("+ DEVICE init: " + str(name))
+        
         #Device.__init__(self, adapter, 'presence-{}'.format(mac))
         Device.__init__(self, adapter, _id)
 
@@ -40,10 +39,14 @@ class PresenceDevice(Device):
                 'readOnly': True,
             },
             str(details))
+            
+        if self.adapter.DEBUG:
+            print("+ Adding new device: " + str(name))
 
 
     def add_boolean_child(self, propertyID, new_description, new_value):
-        print("+ DEVICE.ADD_BOOLEAN_CHILD with id: " + str(propertyID))
+        if self.adapter.DEBUG:
+            print("+ DEVICE.ADD_BOOLEAN_CHILD with id: " + str(propertyID))
 
         self.properties[propertyID] = PresenceProperty(
             self,
@@ -59,14 +62,15 @@ class PresenceDevice(Device):
         try:
             self.notify_property_changed(self.properties[propertyID])
             self.adapter.handle_device_added(self)
-            print("-All properties: " + str(self.get_property_descriptions()))
+            #print("-All properties: " + str(self.get_property_descriptions()))
 
         except Exception as ex:
             print("Error in handle_device_added after adding property: " + str(ex))
 
 
     def add_integer_child(self, propertyID, new_description, new_value):
-        print("+ DEVICE.ADD_INTEGER_CHILD with id: " + str(propertyID))
+        if self.adapter.DEBUG:
+            print("+ DEVICE.ADD_INTEGER_CHILD with id: " + str(propertyID))
 
         self.properties[propertyID] = PresenceProperty(
             self,
