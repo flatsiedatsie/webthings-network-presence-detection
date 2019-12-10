@@ -150,7 +150,8 @@ def nmblookup(ip_address):
             #return str(result.stdout)
 
         except Exception as ex:
-            print("Nmblookup error: " + str(ex))
+            pass
+            #print("Nmblookup error: " + str(ex))
         return ""
         #return str(subprocess.check_output(command, shell=True).decode())
     

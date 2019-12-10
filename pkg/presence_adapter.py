@@ -52,7 +52,7 @@ class PresenceAdapter(Adapter):
         
         self.add_from_config() # Here we get data from the settings in the Gateway interface.
            
-        self.DEBUG = False
+        #self.DEBUG = False
            
         try:
             if self.own_ip == 'unknown':
@@ -634,7 +634,7 @@ class PresenceAdapter(Adapter):
                                 #continue
                                 break
                         
-                        elif possible_name == str(self.previously_found[key]['name']): # The name already existed somewhere in the list, so we change it a little bit and compare again.
+                        if possible_name == str(self.previously_found[key]['name']): # The name already existed somewhere in the list, so we change it a little bit and compare again.
                             could_be_same_same = True
                             if self.DEBUG:
                                 print("-names collided: " + str(possible_name))
