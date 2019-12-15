@@ -186,59 +186,63 @@ class PresenceAdapter(Adapter):
                 self.busy_doing_brute_force_scan = True
                 self.should_brute_force_scan = False
                 
-                # Remove devices that haven't been spotted in a long time.
-                for key in self.previously_found:
-                    try:
-                        if time.time() - self.previously_found[key]['arpa_time'] > 86400 and key not in self.saved_devices:
+                try:
+                    # Remove devices that haven't been spotted in a long time.
+                    current_keys = self.previously_found.keys()
+                    for key in current_keys:
+                        try:
+                            if time.time() - self.previously_found[key]['arpa_time'] > 86400 and key not in self.saved_devices:
+                                if self.DEBUG:
+                                    print("Removing devices from found devices list because it hasn't been spotted in a day, and it's not a device the user has imported about.")
+                                del self.previously_found[key]
+                        except Exception as ex:
                             if self.DEBUG:
-                                print("Removing devices from found devices list because it hasn't been spotted in a day, and it's not a device the user has imported about.")
-                            del self.previously_found[key]
-                    except Exception as ex:
-                        if self.DEBUG:
-                            print("Could not remove old device: " + str(ex))
+                                print("Could not remove old device: " + str(ex))
                 
                 
-                if self.DEBUG:
-                    print("OWN IP = " + str(self.own_ip))
-                if valid_ip(self.own_ip):
-                    #while True:
-                    #def split_processing(items, num_splits=4):
-                    old_previous_found_count = len(self.previously_found)
-                    thread_count = 5
-                    split_size = 51
-                    threads = []
-                    for i in range(thread_count):
-                        # determine the indices of the list this thread will handle
-                        start = i * split_size
-                        if self.DEBUG:
-                            print("thread start = " + str(start))
-                        # special case on the last chunk to account for uneven splits
-                        end = 255 if i+1 == thread_count else (i+1) * split_size
-                        if self.DEBUG:
-                            print("thread end = " + str(end))
-                        # Create the thread
-                        threads.append(
-                            threading.Thread(target=self.scan, args=(start, end)))
-                        threads[-1].daemon = True
-                        threads[-1].start() # start the thread we just created
-
-                    # Wait for all threads to finish
-                    for t in threads:
-                        t.join()
-
                     if self.DEBUG:
-                        print("Deep scan: all threads are done")
-                    # If new devices were found, save the JSON file.
-                    if len(self.previously_found) > old_previous_found_count:
-                        self.should_save = True
+                        print("OWN IP = " + str(self.own_ip))
+                    if valid_ip(self.own_ip):
+                        #while True:
+                        #def split_processing(items, num_splits=4):
+                        old_previous_found_count = len(self.previously_found)
+                        thread_count = 5
+                        split_size = 51
+                        threads = []
+                        for i in range(thread_count):
+                            # determine the indices of the list this thread will handle
+                            start = i * split_size
+                            if self.DEBUG:
+                                print("thread start = " + str(start))
+                            # special case on the last chunk to account for uneven splits
+                            end = 255 if i+1 == thread_count else (i+1) * split_size
+                            if self.DEBUG:
+                                print("thread end = " + str(end))
+                            # Create the thread
+                            threads.append(
+                                threading.Thread(target=self.scan, args=(start, end)))
+                            threads[-1].daemon = True
+                            threads[-1].start() # start the thread we just created
 
-                    self.busy_doing_brute_force_scan = False
-                    self.last_brute_force_scan_time = time.time()
+                        # Wait for all threads to finish
+                        for t in threads:
+                            t.join()
+
+                        if self.DEBUG:
+                            print("Deep scan: all threads are done")
+                        # If new devices were found, save the JSON file.
+                        if len(self.previously_found) > old_previous_found_count:
+                            self.should_save = True
+
+                        self.busy_doing_brute_force_scan = False
+                        self.last_brute_force_scan_time = time.time()
                     
-                    if self.should_save: # This is the only time the json file is stored.    
-                        self.save_to_json()
+                        if self.should_save: # This is the only time the json file is stored.    
+                            self.save_to_json()
 
-
+                except Exception as ex:
+                    print("Error doing brute force scan: " + str(ex))
+                    self.busy_doing_brute_force_scan == False
 
 
 
