@@ -131,7 +131,7 @@ def nmblookup(ip_address):
     # This can sometimes find the hostname.
     #print("in NMB lookup helper function")
     if valid_ip(ip_address):
-        command = "Xnmblookup -A " + str(ip_address)
+        command = "nmblookup -A " + str(ip_address)
         #print("NMB command = " + str(command))
         try:
             result = subprocess.run(command, shell=True, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) #.decode())
