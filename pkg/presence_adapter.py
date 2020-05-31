@@ -187,18 +187,6 @@ class PresenceAdapter(Adapter):
                 self.should_brute_force_scan = False
                 
                 try:
-                    # Remove devices that haven't been spotted in a long time.
-                    current_keys = self.previously_found.keys()
-                    for key in current_keys:
-                        try:
-                            if time.time() - self.previously_found[key]['arpa_time'] > 86400 and key not in self.saved_devices:
-                                if self.DEBUG:
-                                    print("Removing devices from found devices list because it hasn't been spotted in a day, and it's not a device the user has imported about.")
-                                del self.previously_found[key]
-                        except Exception as ex:
-                            if self.DEBUG:
-                                print("Could not remove old device: " + str(ex))
-                
                 
                     if self.DEBUG:
                         print("OWN IP = " + str(self.own_ip))
@@ -239,6 +227,27 @@ class PresenceAdapter(Adapter):
                     
                         if self.should_save: # This is the only time the json file is stored.    
                             self.save_to_json()
+                    
+                    # Remove devices that haven't been spotted in a long time.
+                    list(fdist1.keys())
+                    
+                    current_keys = [None] * len(list(self.previously_found.keys()));    
+     
+                    #Copying all elements of one array into another    
+                    for a in range(0, len(list(self.previously_found.keys()))):    
+                        current_keys[a] = list(self.previously_found.keys())[a];
+                    
+                    #current_keys = self.previously_found.keys()
+                    for key in current_keys:
+                        try:
+                            if time.time() - self.previously_found[key]['arpa_time'] > 86400 and key not in self.saved_devices:
+                                if self.DEBUG:
+                                    print("Removing devices from found devices list because it hasn't been spotted in a day, and it's not a device the user has imported.")
+                                del self.previously_found[key]
+                        except Exception as ex:
+                            if self.DEBUG:
+                                print("Could not remove old device: " + str(ex))
+
 
                 except Exception as ex:
                     print("Error doing brute force scan: " + str(ex))
