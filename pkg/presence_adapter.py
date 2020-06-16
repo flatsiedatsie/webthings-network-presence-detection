@@ -229,7 +229,7 @@ class PresenceAdapter(Adapter):
                             self.save_to_json()
                     
                     # Remove devices that haven't been spotted in a long time.
-                    list(fdist1.keys())
+                    #list(fdist1.keys())
                     
                     current_keys = [None] * len(list(self.previously_found.keys()));    
      

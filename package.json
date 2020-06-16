@@ -1,7 +1,7 @@
 {
   "name": "network-presence-detection-adapter",
   "display_name": "Network presence detector",
-  "version": "0.1.3",
+  "version": "1.0.0",
   "description": "Check if devices are on your network",
   "author": "Flatsiedatsie",
   "main": "main.py",
