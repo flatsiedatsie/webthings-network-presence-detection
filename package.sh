@@ -1,27 +1,31 @@
-#!/bin/bash
+#!/bin/bash -e
 
-set -e
-
-version=$(grep version package.json | cut -d: -f2 | cut -d\" -f2)
+version=$(grep '"version"' manifest.json | cut -d: -f2 | cut -d\" -f2)
 
 # Clean up from previous releases
-rm -rf ._* *.tgz package
-rm -f SHA256SUMS
-#rm -rf ._*
+rm -rf *.tgz package SHA256SUMS
+
+# Prep new package
+mkdir package
 
 # Put package together
-mkdir package
 cp -r pkg LICENSE *.json *.py package/
 find package -type f -name '*.pyc' -delete
+find package -type f -name '._*' -delete
 find package -type d -empty -delete
-echo "prepared the files in the package directory"
 
 # Generate checksums
+echo "generating checksums"
 cd package
-find . -type f \! -name SHA256SUMS -exec sha256sum {} \; >> SHA256SUMS
-cd ..
-echo "generated checksums"
+find . -type f \! -name SHA256SUMS -exec shasum --algorithm 256 {} \; >> SHA256SUMS
+cd -
 
 # Make the tarball
-tar czf "network-presence-detection-adapter-${version}.tgz" package
-sha256sum "network-presence-detection-adapter-${version}.tgz"
+echo "creating archive"
+TARFILE="network-presence-detection-adapter-${version}.tgz"
+tar czf ${TARFILE} package
+
+shasum --algorithm 256 ${TARFILE} > ${TARFILE}.sha256sum
+cat ${TARFILE}.sha256sum
+
+rm -rf SHA256SUMS package

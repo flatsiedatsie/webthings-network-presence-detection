@@ -1,6 +1,9 @@
 *.pyc
+*.sha256sum
 *.swp
 *.tgz
-lib/
-package/
-SHA256SUMS
+*~
+.DS_Store
+._*
+/lib/
+/package/
