@@ -17,7 +17,7 @@
   "options": {
     "default": {
       "Time window": 10,
-			"Target IP": "",
+	  "Target IP": "",
       "Debugging": false
     },
     "schema": {
@@ -42,5 +42,5 @@
     }
   },
   "short_name": "Network pres",
-  "version": "1.0.0"
+  "version": "1.0.1"
 }

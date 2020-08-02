@@ -64,7 +64,7 @@ class PresenceAdapter(Adapter):
         self.should_brute_force_scan = True
         self.busy_doing_brute_force_scan = False
         self.last_brute_force_scan_time = 0             # Allows the add-on to start a brute force scan right away.
-        self.seconds_between_brute_force_scans = 120  #1800  # 30 minutes     
+        self.seconds_between_brute_force_scans = 1800  #1800  # 30 minutes     
         
         self.running = True
         self.saved_devices = []
@@ -181,11 +181,12 @@ class PresenceAdapter(Adapter):
         """ Goes over every possible IP adddress in the local network (1-254) to check if it responds to a ping or arping request """
         while self.running:
             if self.busy_doing_brute_force_scan == False and self.should_brute_force_scan == True:
-                if self.DEBUG:
-                    print("Initiating a brute force scan of the entire local network")
                 self.busy_doing_brute_force_scan = True
                 self.should_brute_force_scan = False
-                
+                self.last_brute_force_scan_time = time.time()
+                if self.DEBUG:
+                    print("Initiating a brute force scan of the entire local network")
+                    
                 try:
                 
                     if self.DEBUG:
@@ -194,8 +195,8 @@ class PresenceAdapter(Adapter):
                         #while True:
                         #def split_processing(items, num_splits=4):
                         old_previous_found_count = len(self.previously_found)
-                        thread_count = 5
-                        split_size = 51
+                        thread_count = 2 #5
+                        split_size = 127 #51
                         threads = []
                         for i in range(thread_count):
                             # determine the indices of the list this thread will handle
@@ -219,11 +220,8 @@ class PresenceAdapter(Adapter):
                         if self.DEBUG:
                             print("Deep scan: all threads are done")
                         # If new devices were found, save the JSON file.
-                        if len(self.previously_found) > old_previous_found_count:
+                        if len(self.previously_found) != old_previous_found_count:
                             self.should_save = True
-
-                        self.busy_doing_brute_force_scan = False
-                        self.last_brute_force_scan_time = time.time()
                     
                         if self.should_save: # This is the only time the json file is stored.    
                             self.save_to_json()
@@ -251,7 +249,9 @@ class PresenceAdapter(Adapter):
 
                 except Exception as ex:
                     print("Error doing brute force scan: " + str(ex))
-                    self.busy_doing_brute_force_scan == False
+                    self.busy_doing_brute_force_scan = False
+                    self.should_brute_force_scan = False
+                    self.last_brute_force_scan_time = time.time()
 
 
 
@@ -267,7 +267,8 @@ class PresenceAdapter(Adapter):
                 if time.time() - self.last_brute_force_scan_time > self.seconds_between_brute_force_scans:
                     self.last_brute_force_scan_time = time.time()
                     if succesfully_found != len(self.saved_devices): # Avoid doing a deep scan if all devices are present
-                        self.should_brute_force_scan = True
+                        if self.busy_doing_brute_force_scan == False:
+                            self.should_brute_force_scan = True
             except Exception as ex:
                 print("Clock: error running periodic deep scan: " + str(ex))
 
@@ -324,7 +325,7 @@ class PresenceAdapter(Adapter):
                                 if self.DEBUG:
                                     print("+ Adding minutes ago property to presence device")
                                 self.devices[key].add_integer_child('minutes_ago', "Minutes ago last seen", minutes_ago)
-                            else:
+                            elif minutes_ago != 99999:
                                 self.devices[key].properties['minutes_ago'].update(minutes_ago)
                         except Exception as ex:
                             print("Could not add minutes_ago property" + str(ex))
@@ -551,11 +552,14 @@ class PresenceAdapter(Adapter):
                         self.previously_found[_id]['lastseen'] = now    
                         self.previously_found[_id]['name'] = str(possible_name) # The name may be better, or it may have changed.
                         self.previously_found[_id]['ip'] = ip_address
+                        
+                    
+                
                     
             except Exception as ex:
                 print("Brute force scan: error updating items in the previously_found dictionary: " + str(ex))
 
-
+            time.sleep(5)
 
 
 
