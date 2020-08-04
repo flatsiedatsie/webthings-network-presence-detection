@@ -48,14 +48,14 @@ class PresenceAdapter(Adapter):
         #self.memory_in_weeks = 10 # How many weeks a device will be remembered as a possible device.
         self.time_window = 10 # How many minutes should a device be away before we consider it away?
 
-        self.own_ip = 'unknown' # We scan only scan if the device itself has an IP address.
+        self.own_ip = None # We scan only scan if the device itself has an IP address.
         
         self.add_from_config() # Here we get data from the settings in the Gateway interface.
            
         #self.DEBUG = False
            
         try:
-            if self.own_ip == 'unknown':
+            if self.own_ip == None:
                 self.own_ip = get_ip()
         except:
             print("Could not get actual own IP address")
@@ -174,84 +174,85 @@ class PresenceAdapter(Adapter):
                     
         except Exception as ex:
             print("Error doing light arpa scan: " + str(ex))
-        
+        if self.DEBUG:
+            print("light scan using arp -a is done")
         
         
     def brute_force_scan(self):
         """ Goes over every possible IP adddress in the local network (1-254) to check if it responds to a ping or arping request """
-        while self.running:
-            if self.busy_doing_brute_force_scan == False and self.should_brute_force_scan == True:
-                self.busy_doing_brute_force_scan = True
+        #while self.running:
+        if self.busy_doing_brute_force_scan == False and self.should_brute_force_scan == True:
+            self.busy_doing_brute_force_scan = True
+            self.should_brute_force_scan = False
+            self.last_brute_force_scan_time = time.time()
+            if self.DEBUG:
+                print("Initiating a brute force scan of the entire local network")
+                
+            try:
+            
+                if self.DEBUG:
+                    print("OWN IP = " + str(self.own_ip))
+                if valid_ip(self.own_ip):
+                    #while True:
+                    #def split_processing(items, num_splits=4):
+                    old_previous_found_count = len(self.previously_found)
+                    thread_count = 2 #5
+                    split_size = 127 #51
+                    threads = []
+                    for i in range(thread_count):
+                        # determine the indices of the list this thread will handle
+                        start = i * split_size
+                        if self.DEBUG:
+                            print("thread start = " + str(start))
+                        # special case on the last chunk to account for uneven splits
+                        end = 255 if i+1 == thread_count else (i+1) * split_size
+                        if self.DEBUG:
+                            print("thread end = " + str(end))
+                        # Create the thread
+                        threads.append(
+                            threading.Thread(target=self.scan, args=(start, end)))
+                        threads[-1].daemon = True
+                        threads[-1].start() # start the thread we just created
+
+                    # Wait for all threads to finish
+                    for t in threads:
+                        t.join()
+
+                    if self.DEBUG:
+                        print("Deep scan: all threads are done")
+                    # If new devices were found, save the JSON file.
+                    if len(self.previously_found) != old_previous_found_count:
+                        self.should_save = True
+                
+                    if self.should_save: # This is the only time the json file is stored.    
+                        self.save_to_json()
+                
+                # Remove devices that haven't been spotted in a long time.
+                #list(fdist1.keys())
+                
+                current_keys = [None] * len(list(self.previously_found.keys()));    
+ 
+                #Copying all elements of one array into another    
+                for a in range(0, len(list(self.previously_found.keys()))):    
+                    current_keys[a] = list(self.previously_found.keys())[a];
+                
+                #current_keys = self.previously_found.keys()
+                for key in current_keys:
+                    try:
+                        if time.time() - self.previously_found[key]['arpa_time'] > 86400 and key not in self.saved_devices:
+                            if self.DEBUG:
+                                print("Removing devices from found devices list because it hasn't been spotted in a day, and it's not a device the user has imported.")
+                            del self.previously_found[key]
+                    except Exception as ex:
+                        if self.DEBUG:
+                            print("Could not remove old device: " + str(ex))
+
+
+            except Exception as ex:
+                print("Error doing brute force scan: " + str(ex))
+                self.busy_doing_brute_force_scan = False
                 self.should_brute_force_scan = False
                 self.last_brute_force_scan_time = time.time()
-                if self.DEBUG:
-                    print("Initiating a brute force scan of the entire local network")
-                    
-                try:
-                
-                    if self.DEBUG:
-                        print("OWN IP = " + str(self.own_ip))
-                    if valid_ip(self.own_ip):
-                        #while True:
-                        #def split_processing(items, num_splits=4):
-                        old_previous_found_count = len(self.previously_found)
-                        thread_count = 2 #5
-                        split_size = 127 #51
-                        threads = []
-                        for i in range(thread_count):
-                            # determine the indices of the list this thread will handle
-                            start = i * split_size
-                            if self.DEBUG:
-                                print("thread start = " + str(start))
-                            # special case on the last chunk to account for uneven splits
-                            end = 255 if i+1 == thread_count else (i+1) * split_size
-                            if self.DEBUG:
-                                print("thread end = " + str(end))
-                            # Create the thread
-                            threads.append(
-                                threading.Thread(target=self.scan, args=(start, end)))
-                            threads[-1].daemon = True
-                            threads[-1].start() # start the thread we just created
-
-                        # Wait for all threads to finish
-                        for t in threads:
-                            t.join()
-
-                        if self.DEBUG:
-                            print("Deep scan: all threads are done")
-                        # If new devices were found, save the JSON file.
-                        if len(self.previously_found) != old_previous_found_count:
-                            self.should_save = True
-                    
-                        if self.should_save: # This is the only time the json file is stored.    
-                            self.save_to_json()
-                    
-                    # Remove devices that haven't been spotted in a long time.
-                    #list(fdist1.keys())
-                    
-                    current_keys = [None] * len(list(self.previously_found.keys()));    
-     
-                    #Copying all elements of one array into another    
-                    for a in range(0, len(list(self.previously_found.keys()))):    
-                        current_keys[a] = list(self.previously_found.keys())[a];
-                    
-                    #current_keys = self.previously_found.keys()
-                    for key in current_keys:
-                        try:
-                            if time.time() - self.previously_found[key]['arpa_time'] > 86400 and key not in self.saved_devices:
-                                if self.DEBUG:
-                                    print("Removing devices from found devices list because it hasn't been spotted in a day, and it's not a device the user has imported.")
-                                del self.previously_found[key]
-                        except Exception as ex:
-                            if self.DEBUG:
-                                print("Could not remove old device: " + str(ex))
-
-
-                except Exception as ex:
-                    print("Error doing brute force scan: " + str(ex))
-                    self.busy_doing_brute_force_scan = False
-                    self.should_brute_force_scan = False
-                    self.last_brute_force_scan_time = time.time()
 
 
 
@@ -265,10 +266,20 @@ class PresenceAdapter(Adapter):
 
             try:
                 if time.time() - self.last_brute_force_scan_time > self.seconds_between_brute_force_scans:
+                    if self.DEBUG:
+                        print("30 minutes have passed since the last brute force scan.")
                     self.last_brute_force_scan_time = time.time()
                     if succesfully_found != len(self.saved_devices): # Avoid doing a deep scan if all devices are present
                         if self.busy_doing_brute_force_scan == False:
+                            if self.DEBUG:
+                                print("Should brute force scan is now set to true.")
                             self.should_brute_force_scan = True
+                        else:
+                            if self.DEBUG:
+                                print("Should brute force scan, but already doing brute force scan")
+                    else:
+                        if self.DEBUG:
+                            print("all devices present and accounted for. Will skip brute force scan.")
             except Exception as ex:
                 print("Clock: error running periodic deep scan: " + str(ex))
 
@@ -314,9 +325,9 @@ class PresenceAdapter(Adapter):
                             if self.previously_found[key]['lastseen'] != 0 and self.previously_found[key]['lastseen'] != None:
                                 minutes_ago = int((time.time() - self.previously_found[key]['lastseen']) / 60)
                             else:
-                                minutes_ago = 99999
+                                minutes_ago = None
                         except Exception as ex:
-                            minutes_ago = 99999
+                            minutes_ago = None
                             if self.DEBUG:
                                 print("Minutes ago issue: " + str(ex))
                         
@@ -325,7 +336,7 @@ class PresenceAdapter(Adapter):
                                 if self.DEBUG:
                                     print("+ Adding minutes ago property to presence device")
                                 self.devices[key].add_integer_child('minutes_ago', "Minutes ago last seen", minutes_ago)
-                            elif minutes_ago != 99999:
+                            elif minutes_ago != None:
                                 self.devices[key].properties['minutes_ago'].update(minutes_ago)
                         except Exception as ex:
                             print("Could not add minutes_ago property" + str(ex))
@@ -392,7 +403,9 @@ class PresenceAdapter(Adapter):
             except Exception as ex:
                 print("Clock thread error: " + str(ex))
             
-            time.sleep(5)
+            if self.DEBUG:
+                print("Waiting 60 seconds before scanning all devices again")
+            time.sleep(60)
 
 
 
@@ -771,7 +784,8 @@ class PresenceAdapter(Adapter):
     def start_pairing(self, timeout):
         """Starting the pairing process."""
         self.arpa_scan()
-        self.should_brute_force_scan = True
+        if self.busy_doing_brute_force_scan == False:
+            self.should_brute_force_scan = True
 
     def cancel_pairing(self):
         """Cancel the pairing process."""
@@ -779,7 +793,9 @@ class PresenceAdapter(Adapter):
 
 
 
-        
+    #
+    #  This gives a quick first initial impression of the network.
+    #
     def arpa(self):
         command = "arp -a"
         device_list = {}

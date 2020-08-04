@@ -28,7 +28,7 @@
         },
         "Target IP": {
           "type": "string",
-          "description": "Can be used to override the add-on to target a specific IP address range. For example, paste in 192.168.8.10 if you want to scan 192.168.8.2 through 192.168.8.254. Leave empty to use the controller's own IP address."
+          "description": "Can be used to override the add-on to target a specific IP address range. For example, paste in 192.168.8.10 if you want to scan 192.168.8.2 through 192.168.8.254. Leave empty to use the controller's own IP address as the basis."
         },
         "Debugging": {
           "description": "Debugging allows you to diagnose any issues with the add-on. If enabled it will result in a lot more debug data in the internal log (which can be found under Settings -> Seveloper -> View internal logs).",
@@ -42,5 +42,5 @@
     }
   },
   "short_name": "Network pres",
-  "version": "1.0.1"
+  "version": "1.0.2"
 }
