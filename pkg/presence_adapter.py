@@ -95,8 +95,16 @@ class PresenceAdapter(Adapter):
                     f.write('{}')
             except Exception as ex:
                 print("failed to create empty persistence file: " + str(ex))
+        
         self.previous_found_devices_length = len(self.previously_found)
 
+        # Reset all the lastseen data from the persistence file, since it could be out of date.
+        for key in self.previously_found:
+            try:
+                if 'lastseen' in self.previously_found[key]:
+                    self.previously_found[key]['lastseen'] = None
+            except Exception as ex:
+                print("Error setting lastseen of previously_found devices from persistence to None: " + str(ex))
 
         
         # First scan
@@ -151,7 +159,7 @@ class PresenceAdapter(Adapter):
                         self.previously_found[key] = {} # adding empty device to the previously found dictionary
                         self.previously_found[key]['name'] = arpa_list[key]['name']
                         self.previously_found[key]['arpa_time'] = time.time() #arpa_list[key]['arpa_time'] #timestamp of initiation
-                        #self.previously_found[key]['lastseen'] = 0 #arpa_list[key]['arpa_time'] #timestamp of initiation
+                        self.previously_found[key]['lastseen'] = None #arpa_list[key]['arpa_time'] #timestamp of initiation
                         self.previously_found[key]['ip'] = arpa_list[key]['ip']
                         self.previously_found[key]['mac_address'] = arpa_list[key]['mac_address']
                         
@@ -196,8 +204,8 @@ class PresenceAdapter(Adapter):
                     #while True:
                     #def split_processing(items, num_splits=4):
                     old_previous_found_count = len(self.previously_found)
-                    thread_count = 2 #5
-                    split_size = 127 #51
+                    thread_count = 3 #2 #5
+                    split_size = 85 #127 #51
                     threads = []
                     for i in range(thread_count):
                         # determine the indices of the list this thread will handle
@@ -342,16 +350,17 @@ class PresenceAdapter(Adapter):
                             print("Could not add minutes_ago property" + str(ex))
                             
                         try:
-                            if minutes_ago > self.time_window:
-                                recently = False
-                            else:
-                                recently = True
-                            if 'recently1' not in self.devices[key].properties:
-                                if self.DEBUG:
-                                    print("+ Adding recently spotted property to presence device")
-                                self.devices[key].add_boolean_child('recently1', "Recently spotted", recently)
-                            else:
-                                self.devices[key].properties['recently1'].update(recently)
+                            if minutes_ago != None:
+                                if minutes_ago > self.time_window:
+                                    recently = False
+                                else:
+                                    recently = True
+                                if 'recently1' not in self.devices[key].properties:
+                                    if self.DEBUG:
+                                        print("+ Adding recently spotted property to presence device")
+                                    self.devices[key].add_boolean_child('recently1', "Recently spotted", recently)
+                                else:
+                                    self.devices[key].properties['recently1'].update(recently)
                         except Exception as ex:
                             print("Could not add recently spotted property" + str(ex))
 
@@ -404,8 +413,8 @@ class PresenceAdapter(Adapter):
                 print("Clock thread error: " + str(ex))
             
             if self.DEBUG:
-                print("Waiting 60 seconds before scanning all devices again")
-            time.sleep(60)
+                print("Waiting 5 seconds before scanning all devices again")
+            time.sleep(5)
 
 
 
@@ -437,7 +446,7 @@ class PresenceAdapter(Adapter):
                             print("Populating previously_found from handle_device_saved")
                         self.previously_found[device_id] = {}
                         self.previously_found[device_id]['name'] = str(device['title'])
-                        self.previously_found[device_id]['lastseen'] = 0    
+                        self.previously_found[device_id]['lastseen'] = None   
                         self.previously_found[device_id]['arpa_time'] = int(time.time())
                 except Exception as ex:
                     print("Error adding to found devices list: " + str(ex))
@@ -745,15 +754,13 @@ class PresenceAdapter(Adapter):
                 if self.DEBUG:
                     print("No target IP address was available in the settings data")
 
-            
-            
-            
-            
-            try:
-                self.time_window = clamp(int(config['Time window']), 1, 10800) # In minutes. 'Grace period' could also be a good name.
-                print("Time window value from settings page: " + str(self.time_window))
-            except:
-                print("No time window preference was found in the settings. Will use default.")
+
+            if 'Time window' in config:
+                try:
+                    self.time_window = clamp(int(config['Time window']), 1, 10800) # In minutes. 'Grace period' could also be a good name.
+                    print("Time window value from settings page: " + str(self.time_window))
+                except:
+                    print("No time window preference was found in the settings. Will use default.")
             
                 
 
@@ -838,7 +845,7 @@ class PresenceAdapter(Adapter):
                         #item = {'ip':ip_address,'mac':mac_address,'name':name, 'mac_short':mac_address.replace(":", "")}
                         #return str(line)
                         
-                        device_list[_id] = {'ip':ip_address,'mac_address':mac_address,'name':possible_name,'arpa_time':int(time.time()),'lastseen':0}
+                        device_list[_id] = {'ip':ip_address,'mac_address':mac_address,'name':possible_name,'arpa_time':int(time.time()),'lastseen':None}
                         #print("device_list = " + str(device_list))
             #return str(result.stdout)
 
