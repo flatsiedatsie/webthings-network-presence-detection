@@ -1,4 +1,4 @@
-"""Network presence adapter for Mozilla WebThings Gateway."""
+"""Network presence adapter for WebThings Gateway."""
 
 from gateway_addon import Property
 

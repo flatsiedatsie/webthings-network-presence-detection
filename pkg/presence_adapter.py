@@ -1,4 +1,4 @@
-"""Presence Detection adapter for Mozilla WebThings Gateway."""
+"""Presence Detection adapter for WebThings Gateway."""
 
 from datetime import datetime, timedelta
 from gateway_addon import Adapter, Database
@@ -18,7 +18,7 @@ from .util import *
 
 
 _CONFIG_PATHS = [
-    os.path.join(os.path.expanduser('~'), '.mozilla-iot', 'config'),
+    os.path.join(os.path.expanduser('~'), '.webthings', 'config'),
 ]
 
 if 'MOZIOT_HOME' in os.environ:
@@ -43,6 +43,9 @@ class PresenceAdapter(Adapter):
                          self.addon_name,
                          verbose=verbose)
         #print("Adapter ID = " + self.get_id())
+
+
+        print("self.user_profile['baseDir'] = " + self.user_profile['baseDir'])
 
         self.DEBUG = True
         #self.memory_in_weeks = 10 # How many weeks a device will be remembered as a possible device.
@@ -69,8 +72,8 @@ class PresenceAdapter(Adapter):
         self.running = True
         self.saved_devices = []
 
-        self.addon_path =  os.path.join(os.path.expanduser('~'), '.mozilla-iot', 'addons', self.addon_name)
-        self.persistence_file_path = os.path.join(os.path.expanduser('~'), '.mozilla-iot', 'data', self.addon_name,'persistence.json')
+        self.addon_path =  os.path.join(self.user_profile['addonsDir'], self.addon_name)
+        self.persistence_file_path = os.path.join(self.user_profile['dataDir'], self.addon_name,'persistence.json')
 
         if self.DEBUG:
             print("self.persistence_file_path = " + str(self.persistence_file_path))
