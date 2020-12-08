@@ -48,7 +48,7 @@ class PresenceAdapter(Adapter):
         #print("Adapter ID = " + self.get_id())
 
 
-        print("self.user_profile['baseDir'] = " + self.user_profile['baseDir'])
+        #print("self.user_profile['baseDir'] = " + self.user_profile['baseDir'])
 
         self.DEBUG = True
         #self.memory_in_weeks = 10 # How many weeks a device will be remembered as a possible device.
