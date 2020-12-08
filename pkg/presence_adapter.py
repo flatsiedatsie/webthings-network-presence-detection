@@ -1,28 +1,31 @@
 """Presence Detection adapter for WebThings Gateway."""
 
-from datetime import datetime, timedelta
-from gateway_addon import Adapter, Database
-import json
+
+
 import os
 import re
-import threading
+import sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib'))
+import json
 import time
-import subprocess
 import socket
+from datetime import datetime, timedelta
+import threading
+import subprocess
+from gateway_addon import Adapter, Database
 
 from .presence_device import PresenceDevice
 from .util import *
 
 
-
-
+_TIMEOUT = 3
 
 _CONFIG_PATHS = [
     os.path.join(os.path.expanduser('~'), '.webthings', 'config'),
 ]
 
-if 'MOZIOT_HOME' in os.environ:
-    _CONFIG_PATHS.insert(0, os.path.join(os.environ['MOZIOT_HOME'], 'config'))
+if 'WEBTHINGS_HOME' in os.environ:
+    _CONFIG_PATHS.insert(0, os.path.join(os.environ['WEBTHINGS_HOME'], 'config'))
 
 
 class PresenceAdapter(Adapter):
@@ -388,28 +391,30 @@ class PresenceAdapter(Adapter):
                     try:
                         if self.DEBUG:
                             print("IP from previously found list: " + str(self.previously_found[key]['ip']))
-                        if ping(self.previously_found[key]['ip'],1):
-                            if self.DEBUG:
-                                print(">> Ping could not find device at " + str(self.previously_found[key]['ip']) + ". Maybe Arping can.")
-                            try:
-                                if arping(self.previously_found[key]['ip'], 1) == 0:
-                                    self.previously_found[key]['lastseen'] = int(time.time())
-                                    if self.DEBUG:
-                                        print(">> Arping found it.")
-                                    succesfully_found += 1
-                                else:
-                                    if self.DEBUG:
-                                        print(">> Ping also could not find the device.")
-                            except Exception as ex:
-                                print("Error trying Arping: " + str(ex))
-                        else:
-                            if self.DEBUG:
-                                print(">> Ping found device")
-                            self.previously_found[key]['lastseen'] = int(time.time())
-                            succesfully_found += 1
+                        if 'ip' in self.previously_found[key]:
+                            if ping(self.previously_found[key]['ip'],1):
+                                if self.DEBUG:
+                                    print(">> Ping could not find device at " + str(self.previously_found[key]['ip']) + ". Maybe Arping can.")
+                                try:
+                                    if arping(self.previously_found[key]['ip'], 1) == 0:
+                                        self.previously_found[key]['lastseen'] = int(time.time())
+                                        if self.DEBUG:
+                                            print(">> Arping found it.")
+                                        succesfully_found += 1
+                                    else:
+                                        if self.DEBUG:
+                                            print(">> Ping also could not find the device.")
+                                except Exception as ex:
+                                    print("Error trying Arping: " + str(ex))
+                            else:
+                                if self.DEBUG:
+                                    print(">> Ping found device")
+                                self.previously_found[key]['lastseen'] = int(time.time())
+                                succesfully_found += 1
                         
                     except Exception as ex:
-                        print("Was not able to scan device from saved_devices list: " + str(ex))
+                        if self.DEBUG:
+                            print("Was not able to scan device from saved_devices list: " + str(ex))
                     
                     
             except Exception as ex:
