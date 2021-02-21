@@ -396,7 +396,7 @@ class PresenceAdapter(Adapter):
                                 if self.DEBUG:
                                     print(">> Ping could not find device at " + str(self.previously_found[key]['ip']) + ". Maybe Arping can.")
                                 try:
-                                    if arping(self.previously_found[key]['ip'], 1) == 0:
+                                    if not self.previously_found[key]['ip'] in self.devices_excluding_arping and not self.previously_found[key]['mac_address'] in self.devices_excluding_arping and arping(self.previously_found[key]['ip'], 1) == 0:
                                         self.previously_found[key]['lastseen'] = int(time.time())
                                         if self.DEBUG:
                                             print(">> Arping found it.")
@@ -769,8 +769,16 @@ class PresenceAdapter(Adapter):
                     print("Time window value from settings page: " + str(self.time_window))
                 except:
                     print("No time window preference was found in the settings. Will use default.")
+
+
+            if 'Devices excluding arping' in config:
+                try:
+                    self.devices_excluding_arping = config['Devices excluding arping']    
+                    print("Devices excluding ARPing from settings page: " + str(self.devices_excluding_arping))
+                except:
+                    print("No ping devices were found in the settings.")
             
-                
+
 
         except:
             print("Error getting config data from database. Check the add-on's settings page for any issues.")
