@@ -17,8 +17,9 @@
   "options": {
     "default": {
       "Time window": 10,
-	  "Target IP": "",
-      "Debugging": false
+	    "Target IP": "",
+      "Debugging": false,
+      "Devices excluding arping": []
     },
     "schema": {
       "properties": {
@@ -33,6 +34,13 @@
         "Debugging": {
           "description": "Debugging allows you to diagnose any issues with the add-on. If enabled it will result in a lot more debug data in the internal log (which can be found under Settings -> Seveloper -> View internal logs).",
           "type": "boolean"
+        },
+        "Devices excluding arping": {
+          "description": "Only if the default method does not work (e.g. when WoL is enabled): IP or MAC Adresses of devices whose presence should be determined through regular pings only (ARPing disabled)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
