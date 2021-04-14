@@ -46,25 +46,18 @@ class PresenceAdapter(Adapter):
                          self.addon_name,
                          verbose=verbose)
         #print("Adapter ID = " + self.get_id())
-
+        
+        self.DEBUG = False
 
         #print("self.user_profile['baseDir'] = " + self.user_profile['baseDir'])
-
-        self.DEBUG = True
+     
         #self.memory_in_weeks = 10 # How many weeks a device will be remembered as a possible device.
         self.time_window = 10 # How many minutes should a device be away before we consider it away?
 
         self.own_ip = None # We scan only scan if the device itself has an IP address.
         
-        self.add_from_config() # Here we get data from the settings in the Gateway interface.
-           
-        #self.DEBUG = False
-           
-        try:
-            if self.own_ip == None:
-                self.own_ip = get_ip()
-        except:
-            print("Could not get actual own IP address")
+        self.prefered_interface = "eth0"
+        self.selected_interface = "eth0"
         
      
         self.should_brute_force_scan = True
@@ -80,9 +73,10 @@ class PresenceAdapter(Adapter):
 
         if self.DEBUG:
             print("self.persistence_file_path = " + str(self.persistence_file_path))
+        
         self.should_save = False
-
-
+        
+        
         try:
             with open(self.persistence_file_path) as file_object:
                 #print("Loading json..")
@@ -111,7 +105,30 @@ class PresenceAdapter(Adapter):
                     self.previously_found[key]['lastseen'] = None
             except Exception as ex:
                 print("Error setting lastseen of previously_found devices from persistence to None: " + str(ex))
+        
+        
+        
+        self.add_from_config() # Here we get data from the settings in the Gateway interface.
 
+        time.sleep(5) # give it a few more seconds to make sure the network is up
+           
+        self.select_interface() # checks if the preference is possible.
+        
+        if self.DEBUG:
+            print("selected interface = " + str(self.selected_interface))
+        
+        #self.DEBUG = False
+           
+        try:
+            if self.own_ip == None:
+                self.own_ip = get_ip()
+        except:
+            print("Could not get actual own IP address")
+        
+
+
+
+        
         
         # First scan
         time.sleep(2) # wait a bit before doing the quick scan. The gateway will pre-populate based on the 'handle-device-saved' method.
@@ -138,8 +155,8 @@ class PresenceAdapter(Adapter):
             print("Error starting the brute force scan thread")
 
         
-        while self.running:
-            time.sleep(1)
+        #while self.running:
+        #    time.sleep(1)
         
         
         
@@ -168,7 +185,7 @@ class PresenceAdapter(Adapter):
                         self.previously_found[key]['lastseen'] = None #arpa_list[key]['arpa_time'] #timestamp of initiation
                         self.previously_found[key]['ip'] = arpa_list[key]['ip']
                         self.previously_found[key]['mac_address'] = arpa_list[key]['mac_address']
-                        
+                        self.previously_found[key]['data-collection'] = True
                         self.should_save = True # We will be adding this new device to the list, and then save that updated list.
                         
                     else:
@@ -203,7 +220,6 @@ class PresenceAdapter(Adapter):
                 print("Initiating a brute force scan of the entire local network")
                 
             try:
-            
                 if self.DEBUG:
                     print("OWN IP = " + str(self.own_ip))
                 if valid_ip(self.own_ip):
@@ -274,10 +290,10 @@ class PresenceAdapter(Adapter):
         """ Runs continuously and scans IP addresses that the user has accepted as things """
         if self.DEBUG:
             print("clock thread init")
-            
+        last_run = 0
         succesfully_found = 0 # If all devices the user cares about are actually present, then no deep scan is necessary.
         while self.running:
-
+            last_run = time.time()
             try:
                 if time.time() - self.last_brute_force_scan_time > self.seconds_between_brute_force_scans:
                     if self.DEBUG:
@@ -306,6 +322,8 @@ class PresenceAdapter(Adapter):
 
                 
                 for key in self.previously_found:
+                    if self.DEBUG:
+                        print("clock -> " + str(key))
                     # Update device's last seen properties
                     try:
                         # Make sure all devices and properties exist. Should be superfluous really.
@@ -350,25 +368,40 @@ class PresenceAdapter(Adapter):
                                 if self.DEBUG:
                                     print("+ Adding minutes ago property to presence device")
                                 self.devices[key].add_integer_child('minutes_ago', "Minutes ago last seen", minutes_ago)
-                            elif minutes_ago != None:
+                            else: # minutes_ago != None:
+                                if self.DEBUG:
+                                    print("SETTING MINUTES AGO TO NONE")
                                 self.devices[key].properties['minutes_ago'].update(minutes_ago)
                         except Exception as ex:
                             print("Could not add minutes_ago property" + str(ex))
                             
                         try:
+                            recently = None
                             if minutes_ago != None:
                                 if minutes_ago > self.time_window:
                                     recently = False
                                 else:
                                     recently = True
-                                if 'recently1' not in self.devices[key].properties:
-                                    if self.DEBUG:
-                                        print("+ Adding recently spotted property to presence device")
-                                    self.devices[key].add_boolean_child('recently1', "Recently spotted", recently)
-                                else:
-                                    self.devices[key].properties['recently1'].update(recently)
+                            if 'recently1' not in self.devices[key].properties:
+                                if self.DEBUG:
+                                    print("+ Adding recently spotted property to presence device")
+                                self.devices[key].add_boolean_child('recently1', "Recently spotted", recently)
+                            else:
+                                self.devices[key].properties['recently1'].update(recently)
                         except Exception as ex:
                             print("Could not add recently spotted property" + str(ex))
+
+                        
+                        if 'data-collection' not in self.devices[key].properties:
+                            if self.DEBUG:
+                                print("+ Adding recently spotted property to presence device")
+                                
+                            data_collection_state = True
+                            if 'data-collection' in self.previously_found[key]:
+                                data_collection_state = self.previously_found[key]['data-collection']
+                            
+                            self.devices[key].add_boolean_child('data-collection', "Data collection", data_collection_state, False, False) # name, title, value, readOnly, add @type
+                            
 
                     except Exception as ex:
                         print("Could not create or update property. Error: " + str(ex))    
@@ -391,26 +424,38 @@ class PresenceAdapter(Adapter):
                     try:
                         if self.DEBUG:
                             print("IP from previously found list: " + str(self.previously_found[key]['ip']))
-                        if 'ip' in self.previously_found[key]:
-                            if ping(self.previously_found[key]['ip'],1):
+                        if 'data-collection' in self.previously_found[key]:
+                            if self.previously_found[key]['data-collection'] == True:
                                 if self.DEBUG:
-                                    print(">> Ping could not find device at " + str(self.previously_found[key]['ip']) + ". Maybe Arping can.")
-                                try:
-                                    if arping(self.previously_found[key]['ip'], 1) == 0:
-                                        self.previously_found[key]['lastseen'] = int(time.time())
+                                    print("- data-collection is allowed.")
+                                if 'ip' in self.previously_found[key]:
+                                    if self.ping(self.previously_found[key]['ip'],1):
                                         if self.DEBUG:
-                                            print(">> Arping found it.")
-                                        succesfully_found += 1
+                                            print(">> Ping could not find device at " + str(self.previously_found[key]['ip']) + ". Maybe Arping can.")
+                                        try:
+                                            if self.arping(self.previously_found[key]['ip'], 1) == 0:
+                                                self.previously_found[key]['lastseen'] = int(time.time())
+                                                if self.DEBUG:
+                                                    print(">> Arping found it.")
+                                                succesfully_found += 1
+                                            else:
+                                                if self.DEBUG:
+                                                    print(">> Arping also could not find the device.")
+                                        except Exception as ex:
+                                            print("Error trying Arping: " + str(ex))
                                     else:
                                         if self.DEBUG:
-                                            print(">> Ping also could not find the device.")
-                                except Exception as ex:
-                                    print("Error trying Arping: " + str(ex))
+                                            print(">> Ping found device")
+                                        self.previously_found[key]['lastseen'] = int(time.time())
+                                        succesfully_found += 1
                             else:
                                 if self.DEBUG:
-                                    print(">> Ping found device")
-                                self.previously_found[key]['lastseen'] = int(time.time())
-                                succesfully_found += 1
+                                    print("-data-collection is not allowed for this thing, skipping ping.")
+                                        
+                        else:
+                            if self.DEBUG:
+                                print("clock: data-collection property did not exist yet in this thing, adding it now.")
+                            self.previously_found[key]['data-collection'] = True
                         
                     except Exception as ex:
                         if self.DEBUG:
@@ -420,45 +465,68 @@ class PresenceAdapter(Adapter):
             except Exception as ex:
                 print("Clock thread error: " + str(ex))
             
+            saved_devices_count = len(self.saved_devices)
+            scan_time_delta = time.time() - last_run
             if self.DEBUG:
+                print("pinging all devices took this many seconds: " + str(scan_time_delta))
+                print("saved_devices_count = " + str(saved_devices_count))
                 print("Waiting 5 seconds before scanning all devices again")
+                
+            if scan_time_delta < 55:
+                if self.DEBUG:
+                    print("scan took less than a minute. Will wait before starting the next round: " + str(scan_time_delta) )
+                delay = 55 - scan_time_delta
+                time.sleep(delay)
             time.sleep(5)
 
 
 
     def handle_device_saved(self, device_id, device):
         """User saved a thing. Also called when the add-on starts."""
-        if device_id.startswith('presence'):
-            if self.DEBUG:
-                print("handle_device_saved. device_id = " + str(device_id) + ", device = " + str(device))
-
-            if device_id not in self.saved_devices:
-                #print("Adding to saved_devices list: " + str(device_id.split("-")[1]))
+        try:
+            if device_id.startswith('presence'):
                 if self.DEBUG:
-                    print("Added " + str(device['title']) + " to saved devices list")
-                    
-                original_title = "Unknown"
-                try:
-                    if str(device['title']) != "":
-                        original_title = str(device['title'])
-                except:
-                    print("Error getting original_title from data provided by the Gateway")
-                    
-                #self.saved_devices.append({device_id:{'name':original_title}})
-                self.saved_devices.append(device_id)
-                
-                try:
-                    #pass
-                    if device_id not in self.previously_found:
-                        if self.DEBUG:
-                            print("Populating previously_found from handle_device_saved")
-                        self.previously_found[device_id] = {}
-                        self.previously_found[device_id]['name'] = str(device['title'])
-                        self.previously_found[device_id]['lastseen'] = None   
-                        self.previously_found[device_id]['arpa_time'] = int(time.time())
-                except Exception as ex:
-                    print("Error adding to found devices list: " + str(ex))
+                    print("handle_device_saved. device_id = " + str(device_id) + ", device = " + str(device))
 
+                if device_id not in self.saved_devices:
+                    #print("Adding to saved_devices list: " + str(device_id.split("-")[1]))
+                    if self.DEBUG:
+                        print("Added " + str(device['title']) + " to saved devices list")
+                    
+                    original_title = "Unknown"
+                    try:
+                        if str(device['title']) != "":
+                            original_title = str(device['title'])
+                    except:
+                        print("Error getting original_title from data provided by the Gateway")
+                    
+                    #self.saved_devices.append({device_id:{'name':original_title}})
+                    self.saved_devices.append(device_id)
+                    
+                    data_collection = True
+                    try:
+                        if 'data-collection' in device['properties']:
+                            data_collection = bool(device['properties']['data-collection']['value'])
+                    except Exception as ex:
+                        print("Error getting data collection preference from saved device update info: " + str(ex))
+                
+                    #print("Data_collection value is now: " + str(data_collection))
+                    
+                    try:
+                        #pass
+                        if device_id not in self.previously_found:
+                            if self.DEBUG:
+                                print("Populating previously_found from handle_device_saved")
+                            self.previously_found[device_id] = {}
+                            self.previously_found[device_id]['name'] = str(device['title'])
+                            self.previously_found[device_id]['lastseen'] = None   
+                            self.previously_found[device_id]['arpa_time'] = int(time.time())
+                            self.previously_found[device_id]['data-collection'] = bool(data_collection)
+                    except Exception as ex:
+                        print("Error adding to found devices list: " + str(ex))
+                        
+        except Exception as ex:
+            print("Error dealing with existing saved devices: " + str(ex))
 
 
 
@@ -515,11 +583,11 @@ class PresenceAdapter(Adapter):
             ping_count = 1
 
             alive = False   # holds whether we got any response.
-            if ping(ip_address, ping_count) == 0: # 0 means everything went ok, so a device was found.
+            if self.ping(ip_address, ping_count) == 0: # 0 means everything went ok, so a device was found.
                 alive = True
             else:
                 try:
-                    if arping(ip_address, ping_count) == 0: # 0 means everything went ok, so a device was found.
+                    if self.arping(ip_address, ping_count) == 0: # 0 means everything went ok, so a device was found.
                         alive = True
                 except Exception as ex:
                     print("Error trying Arping: " + str(ex))
@@ -527,7 +595,7 @@ class PresenceAdapter(Adapter):
             # If either ping or arping found a device:
             try:
                 if alive:
-                    output = arp(ip_address)
+                    output = self.arp(ip_address)
                     if self.DEBUG:
                         print(str(ip_address) + " IS ALIVE: " + str(output))
                     mac_addresses = re.findall(r'(([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2})', output)
@@ -607,21 +675,23 @@ class PresenceAdapter(Adapter):
         #    print("socket.gethostbyaddr(ip_address) error: " + str(ex))
         
         
-        try:
-            nmb_result = nmblookup(ip_address)
-            if self.DEBUG:
-                print("nmblookup result = " + str(nmb_result))
-        except Exception as ex:
-            if self.DEBUG:
-                print("Error doing nmblookup: " + str(ex))
+        # This only works if Samba is installed, and it isn't installed by default
+        #try:
+        #    nmb_result = nmblookup(ip_address)
+        #    if self.DEBUG:
+        #        print("nmblookup result = " + str(nmb_result))
+        #except Exception as ex:
+        #    if self.DEBUG:
+        #        print("Error doing nmblookup: " + str(ex))
         
         if nmb_result == "":
-            if self.DEBUG:
-                print("NMB lookup result was an empty string")
+            #if self.DEBUG:
+            #    print("NMB lookup result was an empty string")
                 
             # Round 2: analyse MAC address
             if found_device_name == '?' or found_device_name == '' or valid_ip(found_device_name):
-            
+                if self.DEBUG: 
+                    print("Will try to figure out a vendor name based on the mac address")
                 vendor = 'unnamed'
                 try:
                     # Get the vendor name, and shorten it. It removes
@@ -749,7 +819,7 @@ class PresenceAdapter(Adapter):
             # Can be used to override normal behaviour (which is to scan the controller's neighbours), and target a very different group of IP addresses.
             if 'Target IP' in config:
                 try:
-                    if str(config['Target IP']) != "":
+                    
                         potential_ip = str(config['Target IP'])
                         if valid_ip(potential_ip):
                             self.own_ip = potential_ip
@@ -762,11 +832,20 @@ class PresenceAdapter(Adapter):
                 if self.DEBUG:
                     print("No target IP address was available in the settings data")
 
+            # Network interface preference
+            if 'Network interface' in config:
+                if str(config['Network interface']) != "":
+                    if str(config['Network interface']) == "prefer wired":
+                        self.prefered_interface = "eth0"
+                    if str(config['Network interface']) == "prefer wireless":
+                        self.prefered_interface = "wlan0"
+                        
 
             if 'Time window' in config:
                 try:
                     self.time_window = clamp(int(config['Time window']), 1, 10800) # In minutes. 'Grace period' could also be a good name.
-                    print("Time window value from settings page: " + str(self.time_window))
+                    if self.DEBUG:
+                        print("Time window value from settings page: " + str(self.time_window))
                 except:
                     print("No time window preference was found in the settings. Will use default.")
             
@@ -818,6 +897,8 @@ class PresenceAdapter(Adapter):
             result = subprocess.run(command, shell=True, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
             for line in result.stdout.split('\n'):
                 if not "<incomplete>" in line and len(line) > 10:
+                    if self.DEBUG:
+                        print("checking arp -a line: " + str(line))
                     name = "?"
                     mac_short = ""
                     try:
@@ -841,9 +922,10 @@ class PresenceAdapter(Adapter):
                         
                     try:
                         found_device_name = str(line.split(' (')[0])
-                        
-                        possible_name = self.get_optimal_name(ip_address, found_device_name, mac_address)
-                        
+                        if _id not in self.previously_found:
+                            possible_name = self.get_optimal_name(ip_address, found_device_name, mac_address)
+                        else:
+                            possible_name = self.previously_found[_id]['name']
                         
                     except Exception as ex:
                         print("Error: could not get name from arp -a line: " + str(ex))
@@ -865,4 +947,64 @@ class PresenceAdapter(Adapter):
 
 
 
+    def select_interface(self):
+        eth0_output = subprocess.check_output(['ifconfig', 'eth0']).decode('utf-8')
+        #print("eth0_output = " + str(eth0_output))
+        wlan0_output = subprocess.check_output(['ifconfig', 'wlan0']).decode('utf-8')
+        #print("wlan0_output = " + str(wlan0_output))
+        if "inet " in eth0_output and self.prefered_interface == "eth0":
+            self.selected_interface = "eth0"
+        if not "inet " in eth0_output and self.prefered_interface == "eth0":
+            self.selected_interface = "wlan0"
+        if "inet " in wlan0_output and self.prefered_interface == "wlan0":
+            self.selected_interface = "wlan0"
+        
+            
+            
+    def ping(self, ip_address, count):
+        param = '-n' if platform.system().lower() == 'windows' else '-c'
+        #command = ["ping", param, count, "-i", 1, str(ip_address)]
+        command = "ping -I " + str(self.selected_interface) + " " + str(param) + " " + str(count) + " -i 0.5 " + str(ip_address)
+        #print("command: " + str(command))
+        #return str(subprocess.check_output(command, shell=True).decode())
+        try:
+            result = subprocess.run(command, shell=True, universal_newlines=True, stdout=subprocess.DEVNULL) #.decode())
+            #print("ping done")
+            return result.returncode
+        except Exception as ex:
+            print("error pinging! Error: " + str(ex))
+            return 1
 
+
+    def arping(self, ip_address, count):
+        param = '-n' if platform.system().lower() == 'windows' else '-c'
+        command = "sudo arping -i " + str(self.selected_interface) + " " + str(param) + " " + str(count) + " " + str(ip_address)
+        #print("command: " + str(command))
+        try:
+            result = subprocess.run(command, shell=True, universal_newlines=True, stdout=subprocess.DEVNULL) #.decode())
+            return result.returncode
+        except Exception as ex:
+            print("error arpinging! Error: " + str(ex))
+            return 1
+
+
+    def arp(self, ip_address):
+        if valid_ip(ip_address):
+            command = "arp -i " + str(self.selected_interface) + " " + str(ip_address)
+            try:
+                result = subprocess.run(command, shell=True, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
+                for line in result.stdout.split('\n'):
+                    mac_addresses = re.findall(r'(([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2})', str(line))
+                    if len(mac_addresses):
+                        #print("util: arp: mac in line: " + line)
+                        return str(line)
+                
+                return str(result.stdout)
+
+            except Exception as ex:
+                print("Arp error: " + str(ex))
+                result = 'error'
+            return result
+            #return str(subprocess.check_output(command, shell=True).decode())
+        
+    

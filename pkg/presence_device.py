@@ -25,6 +25,7 @@ class PresenceDevice(Device):
         self.adapter = adapter
         self.name = name
         self.description = "A device on the local network"
+        self._id = _id
         self._type = ['BinarySensor']
         #self.properties = {}
         #print("device self.properties at init: " + str(self.properties))
@@ -44,19 +45,23 @@ class PresenceDevice(Device):
             print("+ Adding new device: " + str(name))
 
 
-    def add_boolean_child(self, propertyID, new_description, new_value):
+    def add_boolean_child(self, propertyID, new_description, new_value, readOnly=True, addProperty=True):
         if self.adapter.DEBUG:
             print("+ DEVICE.ADD_BOOLEAN_CHILD with id: " + str(propertyID))
+
+
+        description = {
+                'label': new_description,
+                'type': 'boolean',
+                'readOnly': readOnly,
+            }
+        if addProperty:
+            description['@type'] = 'BooleanProperty'
 
         self.properties[propertyID] = PresenceProperty(
             self,
             propertyID,
-            {
-                '@type': 'BooleanProperty',
-                'label': new_description,
-                'type': 'boolean',
-                'readOnly': True,
-            },
+            description,
             new_value)
 
         try:

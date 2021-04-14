@@ -15,6 +15,12 @@ def valid_ip(ip):
         all(num.isdigit() for num in ip.rstrip().split('.'))
 
 
+
+
+def extract_mac(line):
+    p = re.compile(r'(?:[0-9a-fA-F]:?){12}')
+    return re.findall(p, line)[0]
+
 def valid_mac(mac):
     return mac.count(':') == 5 and \
         all(0 <= int(num, 16) < 256 for num in mac.rstrip().split(':')) and \
@@ -38,53 +44,10 @@ def get_ip():
     return IP
 
 
-def ping(ip_address, count):
-    param = '-n' if platform.system().lower() == 'windows' else '-c'
-    #command = ["ping", param, count, "-i", 1, str(ip_address)]
-    command = "ping " + str(param) + " " + str(count) + " -i 0.5 " + str(ip_address)
-    #print("command: " + str(command))
-    #return str(subprocess.check_output(command, shell=True).decode())
-    try:
-        result = subprocess.run(command, shell=True, universal_newlines=True, stdout=subprocess.DEVNULL) #.decode())
-        #print("ping done")
-        return result.returncode
-    except Exception as ex:
-        print("error pinging! Error: " + str(ex))
-        return 1
 
 
-def arping(ip_address, count):
-    param = '-n' if platform.system().lower() == 'windows' else '-c'
-    command = "sudo arping " + str(param) + " " + str(count) + " " + str(ip_address)
-    #print("command: " + str(command))
-    try:
-        result = subprocess.run(command, shell=True, universal_newlines=True, stdout=subprocess.DEVNULL) #.decode())
-        return result.returncode
-    except Exception as ex:
-        print("error arpinging! Error: " + str(ex))
-        return 1
 
 
-def arp(ip_address):
-    if valid_ip(ip_address):
-        command = "arp " + str(ip_address)
-        try:
-            result = subprocess.run(command, shell=True, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
-            for line in result.stdout.split('\n'):
-                mac_addresses = re.findall(r'(([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2})', str(line))
-                if len(mac_addresses):
-                    #print("util: arp: mac in line: " + line)
-                    return str(line)
-                
-            return str(result.stdout)
-
-        except Exception as ex:
-            print("Arp error: " + str(ex))
-            result = 'error'
-        return result
-        #return str(subprocess.check_output(command, shell=True).decode())
-        
-        
 
 
 

@@ -43,8 +43,19 @@ class PresenceProperty(Property):
         """
         # Theoretically this is never ever called.
         if self.device.adapter.DEBUG:
-            print("property -> set_value")
-            print("->value " + str(value))
+            print("property -> set_value to " + str(value))
+        try:
+            if self.name == 'data-collection':
+                #print("self.device.name = " + str(self.device.name))
+                #print("self.device._id = " + str(self.device._id))
+                #print("prev found keys: " + str( self.device.adapter.previously_found.keys() ))
+                self.device.adapter.previously_found[self.device._id]['data-collection'] = bool(value)
+                #self.update(value)
+                self.set_cached_value(value)
+                self.device.notify_property_changed(self)
+                self.device.adapter.save_to_json()
+        except Exception as ex:
+            print("Error updating data-collection value: " + str(ex))
 
 
     def update(self, value):
