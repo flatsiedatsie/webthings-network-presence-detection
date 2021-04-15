@@ -40,7 +40,7 @@
           "type": "string"
         },
         "Debugging": {
-          "description": "Debugging allows you to diagnose any issues with the add-on. If enabled it will result in a lot more debug data in the internal log (which can be found under Settings -> Seveloper -> View internal logs).",
+          "description": "Debugging allows you to diagnose any issues with the add-on. If enabled it will result in a lot more debug data in the internal log (which can be found under Settings -> Developer -> View internal logs).",
           "type": "boolean"
         }
       },
