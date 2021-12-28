@@ -18,8 +18,10 @@ def valid_ip(ip):
 
 
 def extract_mac(line):
-    p = re.compile(r'(?:[0-9a-fA-F]:?){12}')
-    return re.findall(p, line)[0]
+    #p = re.compile(r'(?:[0-9a-fA-F]:?){12}')
+    p = re.compile(r'((([a-zA-z0-9]{2}[-:]){5}([a-zA-z0-9]{2}))|(([a-zA-z0-9]{2}:){5}([a-zA-z0-9]{2})))')
+    # from https://stackoverflow.com/questions/4260467/what-is-a-regular-expression-for-a-mac-address
+    return re.findall(p, line)[0][0]
 
 def valid_mac(mac):
     return mac.count(':') == 5 and \

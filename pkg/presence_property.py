@@ -27,10 +27,11 @@ class PresenceProperty(Property):
             
             if self.device.adapter.DEBUG:
                 print("+ PROPERTY init: " + str(name))
-                #print("-device: " + str(device))
-                #print("-name: " + str(name))
-                #print("-description: " + str(description))
-                print("  -value: " + str(value))
+                print("-device id: " + str(self.device._id))
+                print("-name: " + str(name))
+                print("-description: " + str(description))
+                print("-value: " + str(value))
+            
         except Exception as ex:
             print("property: could not init. Error: " + str(ex))
 
@@ -43,7 +44,7 @@ class PresenceProperty(Property):
         """
         # Theoretically this is never ever called.
         if self.device.adapter.DEBUG:
-            print("property -> set_value to " + str(value))
+            print("property " + str(self.name) + "-> set_value to " + str(value))
         try:
             if self.name == 'data-collection':
                 #print("self.device.name = " + str(self.device.name))
@@ -65,15 +66,18 @@ class PresenceProperty(Property):
         value -- the value to update
         """
 
-        #print("property -> update to: " + str(value))
+        if self.device.adapter.DEBUG:
+            print("property -> update to: " + str(value))
         try:
             if value != self.value:
-                #print("-property has updated to "  + str(value))
+                
+                if self.device.adapter.DEBUG:
+                    print("-property has updated from  " + str(self.value) + " to "  + str(value))
                 #self.set_cached_value_and_notify(self, value) For future version, can then remove both lines below.
                 self.set_cached_value(value)
                 self.device.notify_property_changed(self)
             else:
-                #print("-property was already at the correct value")
+                #print("-property was still the same value")
                 pass
         except:
             print("Error updating property")

@@ -12,7 +12,7 @@ import socket
 from datetime import datetime, timedelta
 import threading
 import subprocess
-from gateway_addon import Adapter, Database
+from gateway_addon import Adapter, Database, Action
 
 from .presence_device import PresenceDevice
 from .util import *
@@ -59,7 +59,7 @@ class PresenceAdapter(Adapter):
         self.prefered_interface = "eth0"
         self.selected_interface = "eth0"
         
-     
+        self.use_brute_force_scan = False;
         self.should_brute_force_scan = True
         self.busy_doing_brute_force_scan = False
         self.last_brute_force_scan_time = 0             # Allows the add-on to start a brute force scan right away.
@@ -67,6 +67,7 @@ class PresenceAdapter(Adapter):
         
         self.running = True
         self.saved_devices = []
+        self.not_seen_since = {} # used to determine if a device hasn't responded for a long time
 
         self.addon_path =  os.path.join(self.user_profile['addonsDir'], self.addon_name)
         self.persistence_file_path = os.path.join(self.user_profile['dataDir'], self.addon_name,'persistence.json')
@@ -103,6 +104,7 @@ class PresenceAdapter(Adapter):
             try:
                 if 'lastseen' in self.previously_found[key]:
                     self.previously_found[key]['lastseen'] = None
+                self.not_seen_since[key] = None
             except Exception as ex:
                 print("Error setting lastseen of previously_found devices from persistence to None: " + str(ex))
         
@@ -110,7 +112,8 @@ class PresenceAdapter(Adapter):
         
         self.add_from_config() # Here we get data from the settings in the Gateway interface.
 
-        time.sleep(5) # give it a few more seconds to make sure the network is up
+        if not self.DEBUG:
+            time.sleep(5) # give it a few more seconds to make sure the network is up
            
         self.select_interface() # checks if the preference is possible.
         
@@ -124,11 +127,6 @@ class PresenceAdapter(Adapter):
                 self.own_ip = get_ip()
         except:
             print("Could not get actual own IP address")
-        
-
-
-
-        
         
         # First scan
         time.sleep(2) # wait a bit before doing the quick scan. The gateway will pre-populate based on the 'handle-device-saved' method.
@@ -145,14 +143,15 @@ class PresenceAdapter(Adapter):
 
         #done = self.brute_force_scan()
 
-        if self.DEBUG:
-            print("Starting the periodic brute force scan thread")
-        try:
-            b = threading.Thread(target=self.brute_force_scan)
-            b.daemon = True
-            b.start()
-        except:
-            print("Error starting the brute force scan thread")
+        if self.use_brute_force_scan:
+            if self.DEBUG:
+                print("Starting the periodic brute force scan thread")
+            try:
+                b = threading.Thread(target=self.brute_force_scan)
+                b.daemon = True
+                b.start()
+            except:
+                print("Error starting the brute force scan thread")
 
         
         #while self.running:
@@ -190,9 +189,9 @@ class PresenceAdapter(Adapter):
                         
                     else:
                         # Maybe we found a better name this time.
-                        if arpa_list[key]['name'] not in ("","?","unknown"): # superfluous?
+                        if key not in self.saved_devices and arpa_list[key]['name'] not in ("","?","unknown"): # superfluous?
                             if self.DEBUG:
-                                print("ARPA scan may have found a better hostname, adding it to the previously_found devices dictionary")
+                                print("ARPA scan may have found a better hostname: " + str(arpa_list[key]['name']) + ", instead of " + str(self.previously_found[key]['name']) + " adding it to the previously_found devices dictionary")
                             self.previously_found[key]['name'] = arpa_list[key]['name']
                         
                         try:
@@ -209,10 +208,19 @@ class PresenceAdapter(Adapter):
             print("light scan using arp -a is done")
         
         
+        
     def brute_force_scan(self):
+        
+        if not self.use_brute_force_scan:
+            return        
+            
         """ Goes over every possible IP adddress in the local network (1-254) to check if it responds to a ping or arping request """
         #while self.running:
         if self.busy_doing_brute_force_scan == False and self.should_brute_force_scan == True:
+            
+            # Make sure the prefered interface still has an IP address (e.g. if network cable was disconnected, this will be fixed)
+            self.select_interface()
+            
             self.busy_doing_brute_force_scan = True
             self.should_brute_force_scan = False
             self.last_brute_force_scan_time = time.time()
@@ -290,44 +298,42 @@ class PresenceAdapter(Adapter):
         """ Runs continuously and scans IP addresses that the user has accepted as things """
         if self.DEBUG:
             print("clock thread init")
+        time.sleep(5)
         last_run = 0
         succesfully_found = 0 # If all devices the user cares about are actually present, then no deep scan is necessary.
         while self.running:
             last_run = time.time()
-            try:
-                if time.time() - self.last_brute_force_scan_time > self.seconds_between_brute_force_scans:
-                    if self.DEBUG:
-                        print("30 minutes have passed since the last brute force scan.")
-                    self.last_brute_force_scan_time = time.time()
-                    if succesfully_found != len(self.saved_devices): # Avoid doing a deep scan if all devices are present
-                        if self.busy_doing_brute_force_scan == False:
-                            if self.DEBUG:
-                                print("Should brute force scan is now set to true.")
-                            self.should_brute_force_scan = True
+            if self.use_brute_force_scan:
+                try:
+                
+                    if time.time() - self.last_brute_force_scan_time > self.seconds_between_brute_force_scans:
+                        if self.DEBUG:
+                            print("30 minutes have passed since the last brute force scan.")
+                        self.last_brute_force_scan_time = time.time()
+                        if succesfully_found != len(self.saved_devices): # Avoid doing a deep scan if all devices are present
+                            if self.busy_doing_brute_force_scan == False:
+                                if self.DEBUG:
+                                    print("Should brute force scan is now set to true.")
+                                self.should_brute_force_scan = True
+                            else:
+                                if self.DEBUG:
+                                    print("Should brute force scan, but already doing brute force scan")
                         else:
                             if self.DEBUG:
-                                print("Should brute force scan, but already doing brute force scan")
-                    else:
-                        if self.DEBUG:
-                            print("all devices present and accounted for. Will skip brute force scan.")
-            except Exception as ex:
-                print("Clock: error running periodic deep scan: " + str(ex))
+                                print("all devices present and accounted for. Will skip brute force scan.")
+                except Exception as ex:
+                    print("Clock: error running periodic deep scan: " + str(ex))
 
             succesfully_found = 0
             try:
-                #if self.DEBUG:
-                    #print("")
-                    #print("CLOCK TICK")
-                        
-
-                
                 for key in self.previously_found:
                     if self.DEBUG:
                         print("clock -> " + str(key))
                     # Update device's last seen properties
                     try:
                         # Make sure all devices and properties exist. Should be superfluous really.
-                        #print("clock - str(key) = " + str(key) + " has " + str(self.previously_found[key]))
+                        if self.DEBUG:
+                            print("clock - str(key) = " + str(key) + " has " + str(self.previously_found[key]))
                         if str(key) not in self.devices:
                             
                             #print(str(self.previously_found[str(key)]) + " was not turned into an internal devices object yet.")
@@ -355,112 +361,210 @@ class PresenceAdapter(Adapter):
 
                         try:
                             if self.previously_found[key]['lastseen'] != 0 and self.previously_found[key]['lastseen'] != None:
-                                minutes_ago = int((time.time() - self.previously_found[key]['lastseen']) / 60)
+                                if self.DEBUG:
+                                    print("-adding a minute to minutes_ago variable")
+                                minutes_ago = int( (time.time() - self.previously_found[key]['lastseen']) / 60 )
                             else:
                                 minutes_ago = None
+                                if self.DEBUG:
+                                    print("                             --> MINUTES AGO IS NONE <--")
+                                    
+                            #should_update_last_seen = True
+                            #if 'data_mute_end_time' in self.previously_found[key]:
+                            #    if self.DEBUG:
+                            #        print("data_mute_end_time spotted")
+                            #    if self.previously_found[key]['data_mute_end_time'] > time.time():
+                            #        if self.DEBUG:
+                            #            print("clock: skipping last_seen increment of muted device " + str(self.previously_found[key]['name']))
+                            #        minutes_ago = None
+                                    #should_update_last_seen = False
+                            
+                                    
                         except Exception as ex:
                             minutes_ago = None
                             if self.DEBUG:
-                                print("Minutes ago issue: " + str(ex))
+                                print("Clock: minutes ago issue: " + str(ex))
+                        
                         
                         try:
+                            #if should_update_last_seen:
                             if 'minutes_ago' not in self.devices[key].properties:
                                 if self.DEBUG:
-                                    print("+ Adding minutes ago property to presence device")
-                                self.devices[key].add_integer_child('minutes_ago', "Minutes ago last seen", minutes_ago)
-                            else: # minutes_ago != None:
+                                    print("+ Adding minutes ago property to presence device, with value: " + str(minutes_ago))
+                                self.devices[key].add_integer_child("minutes_ago", "Minutes ago last seen", minutes_ago)
+                            elif minutes_ago != None:
                                 if self.DEBUG:
-                                    print("SETTING MINUTES AGO TO NONE")
-                                self.devices[key].properties['minutes_ago'].update(minutes_ago)
+                                    print("Minutes_ago of " + str(self.previously_found[key]['name']) + " is: " + str(minutes_ago))
+                            
+                            if self.DEBUG:
+                                print("updating minutes ago")
+                            self.devices[key].properties["minutes_ago"].update(minutes_ago)
+                                    
                         except Exception as ex:
                             print("Could not add minutes_ago property" + str(ex))
-                            
+                        
+                        
                         try:
                             recently = None
                             if minutes_ago != None:
+                                if self.DEBUG:
+                                    print("minutes_ago was not None, it was: " + str(minutes_ago))
                                 if minutes_ago > self.time_window:
                                     recently = False
                                 else:
                                     recently = True
+                                    
+                            else:
+                                if self.DEBUG:
+                                    print("minutes_ago was None, so not determining recently state (will be None too)")
+                                    
                             if 'recently1' not in self.devices[key].properties:
                                 if self.DEBUG:
                                     print("+ Adding recently spotted property to presence device")
-                                self.devices[key].add_boolean_child('recently1', "Recently spotted", recently)
+                                self.devices[key].add_boolean_child("recently1", "Recently spotted", recently, True, "BooleanProperty") # name, title, value, readOnly, @type
                             else:
-                                self.devices[key].properties['recently1'].update(recently)
+                                self.devices[key].properties["recently1"].update(recently)
                         except Exception as ex:
                             print("Could not add recently spotted property" + str(ex))
 
                         
                         if 'data-collection' not in self.devices[key].properties:
                             if self.DEBUG:
-                                print("+ Adding recently spotted property to presence device")
+                                print("+ Adding data-collection property to presence device")
                                 
                             data_collection_state = True
                             if 'data-collection' in self.previously_found[key]:
+                                if self.DEBUG:
+                                    print("+ Found a data-collection preference in the previously_found data")
                                 data_collection_state = self.previously_found[key]['data-collection']
                             
-                            self.devices[key].add_boolean_child('data-collection', "Data collection", data_collection_state, False, False) # name, title, value, readOnly, add @type
-                            
+                            self.devices[key].add_boolean_child("data-collection", "Data collection", data_collection_state, False, "") # name, title, value, readOnly, @type
+
+
+                        #if 'data-temporary-mute' not in self.devices[key].properties:
+                        #    if self.DEBUG:
+                        #        print("+ Adding recently spotted property to presence device")
+                        #    
+                        #    self.devices[key].add_boolean_child("data-temporary-mute", "Temporary data mute", False, False, "PushedProperty") # name, title, value, readOnly, @type
+                        
+            
 
                     except Exception as ex:
                         print("Could not create or update property. Error: " + str(ex))    
                     
-                    
-                # Scan the devices the user cares about
+                
+                
+                
+                # Scan the devices the user cares about (once a minute)
                 for key in self.saved_devices:
+                    if self.DEBUG:
+                        print("")
+                        print("clock: scanning every minute: key in saved_devices: " + str(key))
+                    
                     if str(key) not in self.previously_found:
                         if self.DEBUG:
                             print("Saved thing was not found through scanning yet (not yet added to previously_found), skipping update attempt")
                         continue
+                        
                     if self.DEBUG:
-                        print("")
-                        print("CLOCK: key from saved devices:" + str(key))
+                        print("clock: scanning every minute: human readable name: " + str(self.previously_found[key]['name']))
 
-                    if self.DEBUG:
-                        print("Saved device ID " + str(key) + " was also in previously found list. Trying scan.")
+
+                    #if self.DEBUG:
+                    #    print("Saved device ID " + str(key) + " was also in previously found list. Trying scan.")
                     
                     # Try doing a Ping and then optionally an Arping request if there is a valid IP Address
                     try:
-                        if self.DEBUG:
-                            print("IP from previously found list: " + str(self.previously_found[key]['ip']))
+                        #if self.DEBUG:
+                        #    print("IP from previously found list: " + str(self.previously_found[key]['ip']))
+                            
+                        #self.DEBUG = True
+                            
+                        should_ping = True
                         if 'data-collection' in self.previously_found[key]:
-                            if self.previously_found[key]['data-collection'] == True:
+                            if self.previously_found[key]['data-collection'] == False:
                                 if self.DEBUG:
-                                    print("- data-collection is allowed.")
-                                if 'ip' in self.previously_found[key]:
-                                    if self.ping(self.previously_found[key]['ip'],1):
-                                        if self.DEBUG:
-                                            print(">> Ping could not find device at " + str(self.previously_found[key]['ip']) + ". Maybe Arping can.")
-                                        try:
-                                            if self.arping(self.previously_found[key]['ip'], 1) == 0:
-                                                self.previously_found[key]['lastseen'] = int(time.time())
-                                                if self.DEBUG:
-                                                    print(">> Arping found it.")
-                                                succesfully_found += 1
-                                            else:
-                                                if self.DEBUG:
-                                                    print(">> Arping also could not find the device.")
-                                        except Exception as ex:
-                                            print("Error trying Arping: " + str(ex))
-                                    else:
-                                        if self.DEBUG:
-                                            print(">> Ping found device")
-                                        self.previously_found[key]['lastseen'] = int(time.time())
-                                        succesfully_found += 1
-                            else:
-                                if self.DEBUG:
-                                    print("-data-collection is not allowed for this thing, skipping ping.")
-                                        
+                                    print("clock: skipping pinging of " + str(self.previously_found[key]['name']) + " because data collection is disabled")
+                                should_ping = False
                         else:
                             if self.DEBUG:
-                                print("clock: data-collection property did not exist yet in this thing, adding it now.")
+                                print("clock: data-collection value did not exist yet in this thing, adding it now.")
                             self.previously_found[key]['data-collection'] = True
+                            self.should_save = True
+                                
+                        if 'data_mute_end_time' in self.previously_found[key]:
+                            if self.DEBUG:
+                                print("data_mute_end_time spotted: " + str(self.previously_found[key]['data_mute_end_time']) + ". delta: " + str(self.previously_found[key]['data_mute_end_time'] - time.time()))
+                            if self.previously_found[key]['data_mute_end_time'] > time.time():
+                                if self.DEBUG:
+                                    print("clock: skipping pinging of muted device " + str(self.previously_found[key]['name']))
+                                should_ping = False
+                        else:
+                            if self.DEBUG:
+                                print("clock: mute_end_time value did not exist yet in this thing, adding it now.")
+                            self.previously_found[key]['data_mute_end_time'] = 0
+                            self.should_save = True
+                            
+                                
+                        if should_ping == True:
+                            if self.DEBUG:
+                                print("- Should ping is True. Will ping/arping now.")
+                            if 'ip' in self.previously_found[key]:
+                                if self.ping(self.previously_found[key]['ip'],1):
+                                    if self.DEBUG:
+                                        print(">> Ping could not find " + str(self.previously_found[key]['name']) + " at " + str(self.previously_found[key]['ip']) + ". Maybe Arping can.")
+                                    try:
+                                        if self.arping(self.previously_found[key]['ip'], 1) == 0:
+                                            self.previously_found[key]['lastseen'] = int(time.time())
+                                            if self.DEBUG:
+                                                print(">> Arping found it.")
+                                            succesfully_found += 1
+                                            self.not_seen_since[key] = None
+                                        else:
+                                            if self.DEBUG:
+                                                print(">> Arping also could not find the device.")
+                                            if key not in self.not_seen_since:
+                                                self.not_seen_since[key] = int(time.time())
+                                            
+                                            if self.not_seen_since[key] == None:
+                                                self.not_seen_since[key] = int(time.time())
+                                                if self.DEBUG:
+                                                    print("- Remembering first not-seen-since time")
+                                            elif self.not_seen_since[key] + (60 * (self.time_window + 1)) < time.time():
+                                                if self.DEBUG:
+                                                    print("NOT SPOTTED AT ALL DURATION IS NOW LONGER THAN THE TIME WINDOW!")
+                                                recently = False
+                                                if 'recently1' not in self.devices[key].properties:
+                                                    if self.DEBUG:
+                                                        print("+ Adding recently spotted property to presence device")
+                                                    self.devices[key].add_boolean_child("recently1", "Recently spotted", recently, True, "BooleanProperty") # name, title, value, readOnly, @type
+                                                else:
+                                                    self.devices[key].properties["recently1"].update(recently)
+                                                
+                                                
+                                    except Exception as ex:
+                                        print("Error trying Arping: " + str(ex))
+                                else:
+                                    if self.DEBUG:
+                                        print(">> Ping found device")
+                                    self.previously_found[key]['lastseen'] = int(time.time())
+                                    succesfully_found += 1
+                                    self.not_seen_since[key] = None
+                            else:
+                                if self.DEBUG:
+                                    print("- Should ping, but no IP")
+                                    
+                        else:
+                            if self.DEBUG:
+                                print("-data-collection is not allowed for " + str(self.previously_found[key]['name']) + ", skipping ping.")
+                                        
+                        
                         
                     except Exception as ex:
                         if self.DEBUG:
-                            print("Was not able to scan device from saved_devices list: " + str(ex))
+                            print("Error while scanning device from saved_devices list: " + str(ex))
                     
+                    #self.DEBUG = False
                     
             except Exception as ex:
                 print("Clock thread error: " + str(ex))
@@ -468,13 +572,11 @@ class PresenceAdapter(Adapter):
             saved_devices_count = len(self.saved_devices)
             scan_time_delta = time.time() - last_run
             if self.DEBUG:
-                print("pinging all devices took this many seconds: " + str(scan_time_delta))
-                print("saved_devices_count = " + str(saved_devices_count))
-                print("Waiting 5 seconds before scanning all devices again")
+                print("pinging all " + str(saved_devices_count) + " devices took " + str(scan_time_delta) + " seconds.")
                 
             if scan_time_delta < 55:
                 if self.DEBUG:
-                    print("scan took less than a minute. Will wait before starting the next round: " + str(scan_time_delta) )
+                    print("scan took less than a minute. Will wait " + str(scan_time_delta + 5 ) + " seconds before starting the next round")
                 delay = 55 - scan_time_delta
                 time.sleep(delay)
             time.sleep(5)
@@ -542,7 +644,7 @@ class PresenceAdapter(Adapter):
     def remove_thing(self, device_id):
         """User removed a thing from the interface."""
         if self.DEBUG:
-            print("Removing presence detection device")
+            print("Removing presence detection device: " + str(device_id))
 
         try:
             #print("THING TO REMOVE:" + str(self.devices[device_id]))
@@ -794,7 +896,7 @@ class PresenceAdapter(Adapter):
 
 
     def add_from_config(self):
-        """Attempt to add all configured devices."""
+        """Attempt to load addon settings."""
 
         try:
             database = Database(self.addon_name)
@@ -839,8 +941,8 @@ class PresenceAdapter(Adapter):
                         self.prefered_interface = "eth0"
                     if str(config['Network interface']) == "prefer wireless":
                         self.prefered_interface = "wlan0"
-                        
 
+            # how many minutes should "not recently spotted" be?
             if 'Time window' in config:
                 try:
                     self.time_window = clamp(int(config['Time window']), 1, 10800) # In minutes. 'Grace period' could also be a good name.
@@ -848,8 +950,12 @@ class PresenceAdapter(Adapter):
                         print("Time window value from settings page: " + str(self.time_window))
                 except:
                     print("No time window preference was found in the settings. Will use default.")
-            
-                
+
+            # Should brute force scans be attempted?
+            if 'Use brute force scanning' in config:
+                self.use_brute_force = bool(config['Use brute force scanning'])
+
+
 
         except:
             print("Error getting config data from database. Check the add-on's settings page for any issues.")
@@ -942,9 +1048,38 @@ class PresenceAdapter(Adapter):
         except Exception as ex:
             print("Arp -a error: " + str(ex))
             #result = 'error'
+            
+            
+            
+            
+        # Also try getting IPv6 addresses from "ip neighbour"
+        
+        ip_neighbor_output = subprocess.check_output(['ip', 'neighbor']).decode('utf-8')
+        print(ip_neighbor_output)
+        for line in ip_neighbor_output.splitlines():
+            print("ip_neighbor line: " + str(line))
+            if line.endswith("REACHABLE") or line.endswith("STALE") or line.endswith("DELAY"):
+                print("stale or reachable")
+                neighbor_mac = extract_mac(line)
+                neighbor_ip = line.split(" ", 1)[0]
+                print("mac: " + str(neighbor_mac) + " and ip: " + neighbor_ip)
+                if valid_mac(neighbor_mac):
+                    
+                    neighbor_mac_short = str(neighbor_mac.replace(":", ""))
+                    neighbor_id = 'presence-{}'.format(neighbor_mac_short)
+                    print("- valid mac. Proposed id: " + str(neighbor_id))
+                    if neighbor_id not in self.previously_found:
+                        print("not previously found, adding")
+                        device_list[neighbor_id] = {'ip':neighbor_ip,'mac_address':neighbor_mac,'name':'Presence - unnnamed IPv6 device','arpa_time':int(time.time()),'lastseen':None}
+                    else:
+                        print("neighbor ID existed already?")
+        #o = run("python q2.py",capture_output=True,text=True)
+        #print(o.stdout)
+            
+        print(str(device_list))
         return device_list
         #return str(subprocess.check_output(command, shell=True).decode())
-
+        
 
 
     def select_interface(self):
@@ -959,7 +1094,6 @@ class PresenceAdapter(Adapter):
         if "inet " in wlan0_output and self.prefered_interface == "wlan0":
             self.selected_interface = "wlan0"
         
-            
             
     def ping(self, ip_address, count):
         param = '-n' if platform.system().lower() == 'windows' else '-c'
@@ -1008,3 +1142,64 @@ class PresenceAdapter(Adapter):
             #return str(subprocess.check_output(command, shell=True).decode())
         
     
+    
+
+
+
+class presenceAction(Action):
+    """An Action represents an individual action on a device."""
+
+    def __init__(self, id_, device, name, input_):
+        """
+        Initialize the object.
+        id_ ID of this action
+        device -- the device this action belongs to
+        name -- name of the action
+        input_ -- any action inputs
+        """
+        self.id = id_
+        self.device = device
+        self.name = name
+        self.input = input_
+        self.status = 'created'
+        self.time_requested = timestamp()
+        self.time_completed = None
+
+    def as_action_description(self):
+        """
+        Get the action description.
+        Returns a dictionary describing the action.
+        """
+        description = {
+            'name': self.name,
+            'timeRequested': self.time_requested,
+            'status': self.status,
+        }
+
+        if self.input is not None:
+            description['input'] = self.input
+
+        if self.time_completed is not None:
+            description['timeCompleted'] = self.time_completed
+
+        return description
+
+    def as_dict(self):
+        """
+        Get the action description.
+        Returns a dictionary describing the action.
+        """
+        d = self.as_action_description()
+        d['id'] = self.id
+        return d
+
+    def start(self):
+        """Start performing the action."""
+        self.status = 'pending'
+        self.device.action_notify(self)
+
+    def finish(self):
+        """Finish performing the action."""
+        self.status = 'completed'
+        self.time_completed = timestamp()
+        self.device.action_notify(self)
