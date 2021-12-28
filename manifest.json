@@ -17,6 +17,7 @@
   "options": {
     "default": {
       "Time window": 10,
+	  "Use brute force scanning": false,
 	  "Target IP": "",
 	  "Network interface":"prefer wired",
       "Debugging": false
@@ -26,6 +27,10 @@
         "Time window": {
           "description": "How many minutes can a device disappear before it is marked offline? The default is 10 minutes, the minimum is 1, the maximum is 10800 (7 days).",
           "type": "number"
+        },
+        "Use brute force scanning": {
+          "type": "boolean",
+          "description": "If enabled, the addon will periodically ping all IPv4 address in its neighbourhood. This could reveal some devices that are otherwise not detected."
         },
         "Target IP": {
           "type": "string",
@@ -52,5 +57,5 @@
     }
   },
   "short_name": "Network pres",
-  "version": "1.2.0"
+  "version": "1.2.1"
 }
