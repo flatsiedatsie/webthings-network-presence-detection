@@ -907,14 +907,21 @@ class PresenceAdapter(Adapter):
             config = database.load_config()
             database.close()
 
-            if not config or 'Time window' not in config:
+
+        except Exception as ex:
+            print("Error getting config data from database. Check the add-on's settings page for any issues. Error: " + str(ex))
+            self.close_proxy()
+
+        
+        try:
+            if not config:
                 print("Error: required variables not found in config database. Check the addon's settings.")
                 return
 
-            try:
-                self.DEBUG = bool(config['Debugging']) # The variable is clamped: it is forced to be between 1 and 50.
-            except:
-                print("No debugging preference was found in the settings")
+
+            if 'Debugging' in config:
+                print("Debugging is enabled")
+                self.DEBUG = bool(config['Debugging'])
             
             
             # Target IP
@@ -955,10 +962,10 @@ class PresenceAdapter(Adapter):
             if 'Use brute force scanning' in config:
                 self.use_brute_force = bool(config['Use brute force scanning'])
 
+        except Exception as ex:
+            print("Error getting config data from database. Check the add-on's settings page for any issues. Error: " + str(ex))
+            self.close_proxy()
 
-
-        except:
-            print("Error getting config data from database. Check the add-on's settings page for any issues.")
 
 
 
@@ -1055,28 +1062,32 @@ class PresenceAdapter(Adapter):
         # Also try getting IPv6 addresses from "ip neighbour"
         
         ip_neighbor_output = subprocess.check_output(['ip', 'neighbor']).decode('utf-8')
-        print(ip_neighbor_output)
+        #print(ip_neighbor_output)
         for line in ip_neighbor_output.splitlines():
-            print("ip_neighbor line: " + str(line))
+            if self.DEBUG:
+                print("ip_neighbor line: " + str(line))
             if line.endswith("REACHABLE") or line.endswith("STALE") or line.endswith("DELAY"):
-                print("stale or reachable")
+                #print("stale or reachable")
                 neighbor_mac = extract_mac(line)
                 neighbor_ip = line.split(" ", 1)[0]
-                print("mac: " + str(neighbor_mac) + " and ip: " + neighbor_ip)
+                #print("mac: " + str(neighbor_mac) + " and ip: " + neighbor_ip)
                 if valid_mac(neighbor_mac):
                     
                     neighbor_mac_short = str(neighbor_mac.replace(":", ""))
                     neighbor_id = 'presence-{}'.format(neighbor_mac_short)
-                    print("- valid mac. Proposed id: " + str(neighbor_id))
+                    if self.DEBUG:
+                        print("- valid mac. Proposed neighbour id: " + str(neighbor_id))
                     if neighbor_id not in self.previously_found:
-                        print("not previously found, adding")
+                        if self.DEBUG:
+                            print("not previously found, adding new device from neighbourhood data")
                         device_list[neighbor_id] = {'ip':neighbor_ip,'mac_address':neighbor_mac,'name':'Presence - unnnamed IPv6 device','arpa_time':int(time.time()),'lastseen':None}
                     else:
-                        print("neighbor ID existed already?")
+                        pass
+                        #print("neighbor ID existed already?")
         #o = run("python q2.py",capture_output=True,text=True)
         #print(o.stdout)
             
-        print(str(device_list))
+        #print(str(device_list))
         return device_list
         #return str(subprocess.check_output(command, shell=True).decode())
         
