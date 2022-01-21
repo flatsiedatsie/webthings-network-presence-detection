@@ -359,6 +359,15 @@ class PresenceAdapter(Adapter):
                                 
                             self._add_device(key, new_name, detail) # The device did not exist yet, so we're creating it.
 
+
+
+
+
+
+                        #
+                        #  MINUTES AGO
+                        #
+
                         try:
                             if self.previously_found[key]['lastseen'] != 0 and self.previously_found[key]['lastseen'] != None:
                                 if self.DEBUG:
@@ -404,6 +413,11 @@ class PresenceAdapter(Adapter):
                             print("Could not add minutes_ago property" + str(ex))
                         
                         
+                        
+                        #
+                        #  RECENTLY SPOTTED
+                        #
+                        
                         try:
                             recently = None
                             if minutes_ago != None:
@@ -427,6 +441,11 @@ class PresenceAdapter(Adapter):
                         except Exception as ex:
                             print("Could not add recently spotted property" + str(ex))
 
+
+
+                        #
+                        #  DATA COLLECTION
+                        #
                         
                         if 'data-collection' not in self.devices[key].properties:
                             if self.DEBUG:
@@ -480,7 +499,14 @@ class PresenceAdapter(Adapter):
                             
                         #self.DEBUG = True
                             
+                            
+                        #
+                        #  LOOKING FOR REASONS TO SKIP PINGING
+                        #
+                        
                         should_ping = True
+                        
+                        # Data collection disabled?
                         if 'data-collection' in self.previously_found[key]:
                             if self.previously_found[key]['data-collection'] == False:
                                 if self.DEBUG:
@@ -491,13 +517,18 @@ class PresenceAdapter(Adapter):
                                 print("clock: data-collection value did not exist yet in this thing, adding it now.")
                             self.previously_found[key]['data-collection'] = True
                             self.should_save = True
+                        
                                 
+                        # Data-mute enabled?
                         if 'data_mute_end_time' in self.previously_found[key]:
                             if self.DEBUG:
                                 print("data_mute_end_time spotted: " + str(self.previously_found[key]['data_mute_end_time']) + ". delta: " + str(self.previously_found[key]['data_mute_end_time'] - time.time()))
                             if self.previously_found[key]['data_mute_end_time'] > time.time():
                                 if self.DEBUG:
                                     print("clock: skipping pinging of muted device " + str(self.previously_found[key]['name']))
+                                
+                                self.previously_found[key]['lastseen'] = None
+                                self.devices[key].properties["recently1"].update(None)
                                 should_ping = False
                         else:
                             if self.DEBUG:
@@ -506,6 +537,7 @@ class PresenceAdapter(Adapter):
                             self.should_save = True
                             
                                 
+                        # To ping or not to ping
                         if should_ping == True:
                             if self.DEBUG:
                                 print("- Should ping is True. Will ping/arping now.")
@@ -752,8 +784,6 @@ class PresenceAdapter(Adapter):
                         self.previously_found[_id]['lastseen'] = now    
                         self.previously_found[_id]['name'] = str(possible_name) # The name may be better, or it may have changed.
                         self.previously_found[_id]['ip'] = ip_address
-                        
-                    
                 
                     
             except Exception as ex:
