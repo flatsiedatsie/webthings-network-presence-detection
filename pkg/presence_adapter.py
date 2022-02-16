@@ -1023,6 +1023,7 @@ class PresenceAdapter(Adapter):
         self.arpa_scan()
         if self.busy_doing_brute_force_scan == False:
             self.should_brute_force_scan = True
+            self.brute_force_scan()
 
     def cancel_pairing(self):
         """Cancel the pairing process."""
@@ -1110,7 +1111,8 @@ class PresenceAdapter(Adapter):
                     if neighbor_id not in self.previously_found:
                         if self.DEBUG:
                             print("not previously found, adding new device from neighbourhood data")
-                        device_list[neighbor_id] = {'ip':neighbor_ip,'mac_address':neighbor_mac,'name':'Presence - unnnamed IPv6 device','arpa_time':int(time.time()),'lastseen':None}
+                        possible_name = self.get_optimal_name(neighbor_ip, 'Presence - unnnamed IPv6 device', neighbor_mac)
+                        device_list[neighbor_id] = {'ip':neighbor_ip,'mac_address':neighbor_mac,'name':possible_name,'arpa_time':int(time.time()),'lastseen':None}
                     else:
                         pass
                         #print("neighbor ID existed already?")
