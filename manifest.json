@@ -25,19 +25,19 @@
     "schema": {
       "properties": {
         "Time window": {
-          "description": "How many minutes can a device disappear before it is marked offline? The default is 10 minutes, the minimum is 1, the maximum is 10800 (7 days).",
+          "description": "How many minutes can a device disappear before it is marked offline? The default is 10 minutes. The minimum is 1, the maximum is 10800 (7 days).",
           "type": "number"
         },
         "Use brute force scanning": {
           "type": "boolean",
-          "description": "If enabled, the addon will periodically ping all IPv4 address in its neighbourhood. This could reveal some devices that are otherwise not detected."
+          "description": "Advanced. If enabled, the addon will periodically ping all IPv4 address in its neighbourhood. This could reveal some devices that are otherwise not detected."
         },
         "Target IP": {
           "type": "string",
-          "description": "Can be used to override the add-on to target a specific IP address range. For example, paste in 192.168.8.10 if you want to scan 192.168.8.2 through 192.168.8.254. Leave empty to use the controller's own IP address as the basis."
+          "description": "Advanced. Can be used to override the add-on to target a specific IP address range. For example, paste in 192.168.8.10 if you want to scan 192.168.8.2 through 192.168.8.254. Leave empty to use the controller's own IP address as the basis."
         },
         "Network interface": {
-          "description": "Your device may be connected to a network over wifi or through a network cable. In theory these could even be two different networks. That's why you can select if you prefer to scan on the wireless (wlan0) or wired (eth0) network.",
+          "description": "Advanced. Your device may be connected to a network over wifi or through a network cable. In theory these could even be two different networks. That's why you can select if you prefer to scan on the wireless (wlan0) or wired (eth0) network.",
           "enum": [
               "prefer wired",
 			  "prefer wireless"
@@ -45,7 +45,7 @@
           "type": "string"
         },
         "Debugging": {
-          "description": "Debugging allows you to diagnose any issues with the add-on. If enabled it will result in a lot more debug data in the internal log (which can be found under Settings -> Developer -> View internal logs).",
+          "description": "Advanced. Debugging allows you to diagnose any issues with the add-on. If enabled it will result in a lot more debug data in the internal log (which can be found under Settings -> Developer -> View internal logs).",
           "type": "boolean"
         }
       },
