@@ -953,7 +953,6 @@ class PresenceAdapter(Adapter):
 
 
             if 'Debugging' in config:
-                print("Debugging is enabled")
                 self.DEBUG = bool(config['Debugging'])
             
             
@@ -961,15 +960,17 @@ class PresenceAdapter(Adapter):
             # Can be used to override normal behaviour (which is to scan the controller's neighbours), and target a very different group of IP addresses.
             if 'Target IP' in config:
                 try:
-                    
-                        potential_ip = str(config['Target IP'])
+                    potential_ip = str(config['Target IP'])
+                    if potential_ip != "":
                         if valid_ip(potential_ip):
                             self.own_ip = potential_ip
-                            print("A target IP was in settings")
+                            print("Using target IP from addon settings")
                         else:
-                            print("This addon does not understand '" + str(potential_ip) + "' as a valid IP address. Go to the add-on settings page to fix this. For now, the addon will try to detect and use the system's IP address as a base instead.")
-                except:
-                    print("Error handling Target IP setting")
+                            if self.DEBUG:
+                                print("This addon does not understand '" + str(potential_ip) + "' as a valid IP address. Go to the add-on settings page to fix this. For now, the addon will try to detect and use the system's IP address as a base instead.")
+                        
+                except exception as ex:
+                    print("Error handling Target IP setting: " + str(ex))
             else:
                 if self.DEBUG:
                     print("No target IP address was available in the settings data")
@@ -1057,14 +1058,14 @@ class PresenceAdapter(Adapter):
                     print("arp -a results: \n" + str(result.stdout))
                 
                 for line in result.stdout.split('\n'):
-                    print("arp -a line: " + str(line))
+                    #print("arp -a line: " + str(line))
                     if not "<incomplete>" in line and len(line) > 10:
                         if self.DEBUG:
                             print("checking arp -a line: " + str(line))
                         name = "?"
                         mac_short = ""
-                        found_device_name = "unknown"
-                        possible_name = "unknown"
+                        found_device_name = "unnamed"
+                        possible_name = "Presence - unnamed device"
                         
                         try:
                             mac_address_list = re.findall(r'(([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2})', str(line))[0]
@@ -1091,23 +1092,27 @@ class PresenceAdapter(Adapter):
                             if ip_address in nbtscan_results.stdout:
                                 if self.DEBUG:
                                     print("spotted IP address in nbtscan_results, so extracting name form there")
-                                for nbtscan_line in nbtscan_results.split('\n'):
-                                    if ip_address in nbtscan_line:
-                                        #line = line.replace("#PRE","")
-                                        nbtscan_line = nbtscan_line.rstrip()
-                                        nbtscan_parts = nbtscan_line.split("\t")
-                                        if len(nbtscan_parts) > 0:
-                                            found_device_name = nbtscan_parts[1]
-                                            if self.DEBUG:
-                                                print("name extracted from nbtscan_result: " + str(found_device_name))
+                                try:
+                                    for nbtscan_line in nbtscan_results.split('\n'):
+                                        if ip_address in nbtscan_line:
+                                            #line = line.replace("#PRE","")
+                                            nbtscan_line = nbtscan_line.rstrip()
+                                            nbtscan_parts = nbtscan_line.split("\t")
+                                            if len(nbtscan_parts) > 0:
+                                                possible_name = "Presence - " + str(nbtscan_parts[1])
+                                                if self.DEBUG:
+                                                    print("name extracted from nbtscan_result: " + str(found_device_name))
+                                except Exception for ex:
+                                    if self.DEBUG:
+                                        print("Error getting nice name from nbtscan_results: " + str(ex))
                             
                             else:
                                 found_device_name = str(line.split(' (')[0])
                                 
-                            if _id not in self.previously_found:
-                                possible_name = self.get_optimal_name(ip_address, found_device_name, mac_address)
-                            else:
-                                possible_name = self.previously_found[_id]['name']
+                                if _id not in self.previously_found:
+                                    possible_name = self.get_optimal_name(ip_address, found_device_name, mac_address)
+                                else:
+                                    possible_name = self.previously_found[_id]['name']
                         
                         except Exception as ex:
                             print("Error: could not get name from arp -a line: " + str(ex))
@@ -1144,6 +1149,7 @@ class PresenceAdapter(Adapter):
                     print("stale or reachable")
                 neighbor_mac = extract_mac(line)
                 neighbor_ip = line.split(" ", 1)[0]
+                possible_name = "unknown"
                 if self.DEBUG:
                     print("neighbor mac: " + str(neighbor_mac) + ", and ip: " + neighbor_ip)
                 if valid_mac(neighbor_mac):
@@ -1155,7 +1161,25 @@ class PresenceAdapter(Adapter):
                     if neighbor_id not in self.previously_found and neighbor_id not in device_list:
                         if self.DEBUG:
                             print("not previously found, adding new device from neighbourhood data")
-                        possible_name = self.get_optimal_name(neighbor_ip, 'Presence - unnnamed IPv6 device', neighbor_mac)
+                        if ip_address in nbtscan_results.stdout:
+                            if self.DEBUG:
+                                print("spotted IP address in nbtscan_results, so extracting name form there")
+                            try:
+                                for nbtscan_line in nbtscan_results.split('\n'):
+                                    if ip_address in nbtscan_line:
+                                        #line = line.replace("#PRE","")
+                                        nbtscan_line = nbtscan_line.rstrip()
+                                        nbtscan_parts = nbtscan_line.split("\t")
+                                        if len(nbtscan_parts) > 0:
+                                            possible_name = nbtscan_parts[1]
+                                            if self.DEBUG:
+                                                print("name extracted from nbtscan_result: " + str(found_device_name))
+                            except Exception for ex:
+                                if self.DEBUG:
+                                    print("Error getting nice name from nbtscan_results: " + str(ex))
+                        else:
+                            possible_name = self.get_optimal_name(neighbor_ip, 'Unnamed', neighbor_mac)
+                        
                         device_list[neighbor_id] = {'ip':neighbor_ip,'mac_address':neighbor_mac,'name':possible_name,'arpa_time':int(time.time()),'lastseen':None}
                     else:
                         if self.DEBUG:
