@@ -1093,7 +1093,7 @@ class PresenceAdapter(Adapter):
                                 if self.DEBUG:
                                     print("spotted IP address in nbtscan_results, so extracting name form there")
                                 try:
-                                    for nbtscan_line in nbtscan_results.split('\n'):
+                                    for nbtscan_line in nbtscan_results.stdout.split('\n'):
                                         if ip_address in nbtscan_line:
                                             #line = line.replace("#PRE","")
                                             nbtscan_line = nbtscan_line.rstrip()
@@ -1165,7 +1165,7 @@ class PresenceAdapter(Adapter):
                             if self.DEBUG:
                                 print("spotted IP address in nbtscan_results, so extracting name form there")
                             try:
-                                for nbtscan_line in nbtscan_results.split('\n'):
+                                for nbtscan_line in nbtscan_results.stdout.split('\n'):
                                     if ip_address in nbtscan_line:
                                         #line = line.replace("#PRE","")
                                         nbtscan_line = nbtscan_line.rstrip()
