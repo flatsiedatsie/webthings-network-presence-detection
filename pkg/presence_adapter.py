@@ -59,6 +59,8 @@ class PresenceAdapter(Adapter):
         self.prefered_interface = "eth0"
         self.selected_interface = "eth0"
         
+        self.busy_doing_arpa_scan = False
+        
         self.use_brute_force_scan = False;
         self.should_brute_force_scan = True
         self.busy_doing_brute_force_scan = False
@@ -217,11 +219,12 @@ class PresenceAdapter(Adapter):
         """ Goes over every possible IP adddress in the local network (1-254) to check if it responds to a ping or arping request """
         #while self.running:
         if self.busy_doing_brute_force_scan == False and self.should_brute_force_scan == True:
+            self.busy_doing_brute_force_scan = True
             
             # Make sure the prefered interface still has an IP address (e.g. if network cable was disconnected, this will be fixed)
             self.select_interface()
             
-            self.busy_doing_brute_force_scan = True
+            
             self.should_brute_force_scan = False
             self.last_brute_force_scan_time = time.time()
             if self.DEBUG:
@@ -308,7 +311,7 @@ class PresenceAdapter(Adapter):
                 
                     if time.time() - self.last_brute_force_scan_time > self.seconds_between_brute_force_scans:
                         if self.DEBUG:
-                            print("30 minutes have passed since the last brute force scan.")
+                            print("enough time has passed since the last brute force scan.")
                         self.last_brute_force_scan_time = time.time()
                         if succesfully_found != len(self.saved_devices): # Avoid doing a deep scan if all devices are present
                             if self.busy_doing_brute_force_scan == False:
@@ -1035,58 +1038,97 @@ class PresenceAdapter(Adapter):
     #  This gives a quick first initial impression of the network.
     #
     def arpa(self):
-        command = "arp -a"
-        device_list = {}
-        try:
-            result = subprocess.run(command, shell=True, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
-            for line in result.stdout.split('\n'):
-                if not "<incomplete>" in line and len(line) > 10:
-                    if self.DEBUG:
-                        print("checking arp -a line: " + str(line))
-                    name = "?"
-                    mac_short = ""
-                    try:
-                        mac_address_list = re.findall(r'(([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2})', str(line))[0]
-                        #print(str(mac_address_list))
-                        mac_address = str(mac_address_list[0])
-                        #print(str(mac_address))
-                        mac_short = str(mac_address.replace(":", ""))
-                        _id = 'presence-{}'.format(mac_short)
-                    except Exception as ex:
-                        print("getting mac from arp -a line failed: " + str(ex))
-                    
-                    try:
-                        ip_address_list = re.findall(r'(?:\d{1,3}\.)+(?:\d{1,3})', str(line))
-                        #print("ip_address_list = " + str(ip_address_list))
-                        ip_address = str(ip_address_list[0])
-                        if not valid_ip(ip_address):
-                            continue
-                    except Exception as ex:
-                        print("no IP address in line: " + str(ex))
-                        
-                    try:
-                        found_device_name = str(line.split(' (')[0])
-                        if _id not in self.previously_found:
-                            possible_name = self.get_optimal_name(ip_address, found_device_name, mac_address)
-                        else:
-                            possible_name = self.previously_found[_id]['name']
-                        
-                    except Exception as ex:
-                        print("Error: could not get name from arp -a line: " + str(ex))
-                        
-                    if mac_short != "":
-                        #print("util: arp: mac in line: " + line)
-                        #item = {'ip':ip_address,'mac':mac_address,'name':name, 'mac_short':mac_address.replace(":", "")}
-                        #return str(line)
-                        
-                        device_list[_id] = {'ip':ip_address,'mac_address':mac_address,'name':possible_name,'arpa_time':int(time.time()),'lastseen':None}
-                        #print("device_list = " + str(device_list))
-            #return str(result.stdout)
-
-        except Exception as ex:
-            print("Arp -a error: " + str(ex))
-            #result = 'error'
+        
+        if self.busy_doing_arpa_scan == False:
+            self.busy_doing_arpa_scan = True
             
+            nbtscan_command = 'nbtscan -q -e ' + str(self.own_ip) + '/24'
+            nbtscan_results = subprocess.run(nbtscan_command, shell=True, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
+            if self.DEBUG:
+                print("nbtscan_results: " + str(nbtscan_results.stdout))
+            #os.system('nbtscan -q ' + str(self.own_ip))
+        
+            command = "arp -a"
+            device_list = {}
+            try:
+                result = subprocess.run(command, shell=True, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
+                
+                if self.DEBUG:
+                    print("arp -a results: " + str(result.stdout))
+                
+                for line in result.stdout.split('\n'):
+                    print("arp -a line: " + str(line))
+                    if not "<incomplete>" in line and len(line) > 10:
+                        if self.DEBUG:
+                            print("checking arp -a line: " + str(line))
+                        name = "?"
+                        mac_short = ""
+                        found_device_name = "unknown"
+                        possible_name = "unknown"
+                        
+                        try:
+                            mac_address_list = re.findall(r'(([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2})', str(line))[0]
+                            #print(str(mac_address_list))
+                            mac_address = str(mac_address_list[0])
+                            #print(str(mac_address))
+                            mac_short = str(mac_address.replace(":", ""))
+                            _id = 'presence-{}'.format(mac_short)
+                        except Exception as ex:
+                            print("getting mac from arp -a line failed: " + str(ex))
+                    
+                        try:
+                            ip_address_list = re.findall(r'(?:\d{1,3}\.)+(?:\d{1,3})', str(line))
+                            #print("ip_address_list = " + str(ip_address_list))
+                            ip_address = str(ip_address_list[0])
+                            if not valid_ip(ip_address):
+                                if self.DEBUG:
+                                    print("Error: not a valid IP address?")
+                                continue
+                        except Exception as ex:
+                            print("no IP address in line: " + str(ex))
+                        
+                        try:
+                            if ip_address in nbtscan_results.stdout:
+                                if self.DEBUG:
+                                    print("spotted IP address in nbtscan_results, so extracting name form there")
+                                for nbtscan_line in nbtscan_results.split('\n'):
+                                    if ip_address in nbtscan_line:
+                                        #line = line.replace("#PRE","")
+                                        nbtscan_line = nbtscan_line.rstrip()
+                                        nbtscan_parts = nbtscan_line.split("\t")
+                                        if len(nbtscan_parts) > 0:
+                                            found_device_name = nbtscan_parts[1]
+                                            if self.DEBUG:
+                                                print("name extracted from nbtscan_result: " + str(found_device_name))
+                            
+                            else:
+                                found_device_name = str(line.split(' (')[0])
+                                
+                            if _id not in self.previously_found:
+                                possible_name = self.get_optimal_name(ip_address, found_device_name, mac_address)
+                            else:
+                                possible_name = self.previously_found[_id]['name']
+                        
+                        except Exception as ex:
+                            print("Error: could not get name from arp -a line: " + str(ex))
+                        
+                        if mac_short != "" and possible_name != 'unknown':
+                            #print("util: arp: mac in line: " + line)
+                            #item = {'ip':ip_address,'mac':mac_address,'name':name, 'mac_short':mac_address.replace(":", "")}
+                            #return str(line)
+                        
+                            device_list[_id] = {'ip':ip_address,'mac_address':mac_address,'name':possible_name,'arpa_time':int(time.time()),'lastseen':None}
+                        else:
+                            if self.DEBUG:
+                                print("Skipping an arop -a result because of missing mac or name")
+                            #print("device_list = " + str(device_list))
+                #return str(result.stdout)
+
+            except Exception as ex:
+                print("Arp -a error: " + str(ex))
+                #result = 'error'
+            
+            self.busy_doing_arpa_scan = False
             
             
             

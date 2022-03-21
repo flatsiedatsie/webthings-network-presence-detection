@@ -1,4 +1,4 @@
-"""presence adapter for Mozilla WebThings Gateway."""
+"""presence adapter for WebThings Gateway / Candle controller."""
 
 from os import path
 import functools
