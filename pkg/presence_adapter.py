@@ -1102,7 +1102,7 @@ class PresenceAdapter(Adapter):
                                                 possible_name = "Presence - " + str(nbtscan_parts[1])
                                                 if self.DEBUG:
                                                     print("name extracted from nbtscan_result: " + str(found_device_name))
-                                except Exception for ex:
+                                except Exception as ex:
                                     if self.DEBUG:
                                         print("Error getting nice name from nbtscan_results: " + str(ex))
                             
@@ -1174,7 +1174,7 @@ class PresenceAdapter(Adapter):
                                             possible_name = nbtscan_parts[1]
                                             if self.DEBUG:
                                                 print("name extracted from nbtscan_result: " + str(found_device_name))
-                            except Exception for ex:
+                            except Exception as ex:
                                 if self.DEBUG:
                                     print("Error getting nice name from nbtscan_results: " + str(ex))
                         else:
