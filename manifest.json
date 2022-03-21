@@ -30,7 +30,7 @@
         },
         "Use brute force scanning": {
           "type": "boolean",
-          "description": "Advanced. If enabled, the addon will periodically ping all IPv4 address in its neighbourhood. This could reveal some devices that are otherwise not detected."
+          "description": "Advanced. If enabled, the addon will periodically ping all IPv4 address in its neighbourhood. While it puts some more strain on your system, this could reveal some devices that are otherwise not detected."
         },
         "Target IP": {
           "type": "string",
@@ -57,5 +57,5 @@
     }
   },
   "short_name": "Network pres",
-  "version": "1.3.3"
+  "version": "1.3.4"
 }

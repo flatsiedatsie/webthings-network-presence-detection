@@ -1045,7 +1045,7 @@ class PresenceAdapter(Adapter):
             nbtscan_command = 'nbtscan -q -e ' + str(self.own_ip) + '/24'
             nbtscan_results = subprocess.run(nbtscan_command, shell=True, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
             if self.DEBUG:
-                print("nbtscan_results: " + str(nbtscan_results.stdout))
+                print("nbtscan_results: \n" + str(nbtscan_results.stdout))
             #os.system('nbtscan -q ' + str(self.own_ip))
         
             command = "arp -a"
@@ -1054,7 +1054,7 @@ class PresenceAdapter(Adapter):
                 result = subprocess.run(command, shell=True, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
                 
                 if self.DEBUG:
-                    print("arp -a results: " + str(result.stdout))
+                    print("arp -a results: \n" + str(result.stdout))
                 
                 for line in result.stdout.split('\n'):
                     print("arp -a line: " + str(line))
@@ -1140,28 +1140,31 @@ class PresenceAdapter(Adapter):
             if self.DEBUG:
                 print("ip_neighbor line: " + str(line))
             if line.endswith("REACHABLE") or line.endswith("STALE") or line.endswith("DELAY"):
-                #print("stale or reachable")
+                if self.DEBUG:
+                    print("stale or reachable")
                 neighbor_mac = extract_mac(line)
                 neighbor_ip = line.split(" ", 1)[0]
-                #print("mac: " + str(neighbor_mac) + " and ip: " + neighbor_ip)
+                if self.DEBUG:
+                    print("neighbor mac: " + str(neighbor_mac) + ", and ip: " + neighbor_ip)
                 if valid_mac(neighbor_mac):
                     
                     neighbor_mac_short = str(neighbor_mac.replace(":", ""))
                     neighbor_id = 'presence-{}'.format(neighbor_mac_short)
                     if self.DEBUG:
                         print("- valid mac. Proposed neighbour id: " + str(neighbor_id))
-                    if neighbor_id not in self.previously_found:
+                    if neighbor_id not in self.previously_found and neighbor_id not in device_list:
                         if self.DEBUG:
                             print("not previously found, adding new device from neighbourhood data")
                         possible_name = self.get_optimal_name(neighbor_ip, 'Presence - unnnamed IPv6 device', neighbor_mac)
                         device_list[neighbor_id] = {'ip':neighbor_ip,'mac_address':neighbor_mac,'name':possible_name,'arpa_time':int(time.time()),'lastseen':None}
                     else:
-                        pass
-                        #print("neighbor ID existed already?")
+                        if self.DEBUG:
+                            print("neighbor ID existed already in detected devices list")
         #o = run("python q2.py",capture_output=True,text=True)
         #print(o.stdout)
             
-        #print(str(device_list))
+        if self.DEBUG:
+            print("\narpa scan found devices list: " + str(device_list))
         return device_list
         #return str(subprocess.check_output(command, shell=True).decode())
         
