@@ -61,7 +61,7 @@ class PresenceAdapter(Adapter):
         
         self.busy_doing_arpa_scan = False
         
-        self.use_brute_force_scan = False;
+        self.use_brute_force_scan = False; # was used for continuous brute force scanning. This has been deprecated.
         self.should_brute_force_scan = True
         self.busy_doing_brute_force_scan = False
         self.last_brute_force_scan_time = 0             # Allows the add-on to start a brute force scan right away.
@@ -111,7 +111,6 @@ class PresenceAdapter(Adapter):
                 print("Error setting lastseen of previously_found devices from persistence to None: " + str(ex))
         
         
-        
         self.add_from_config() # Here we get data from the settings in the Gateway interface.
 
         if not self.DEBUG:
@@ -135,7 +134,7 @@ class PresenceAdapter(Adapter):
         self.arpa_scan() # get initial list of devices from arp -a
 
         if self.DEBUG:
-            print("Starting the continous scan clock")
+            print("Starting the clock thread")
         try:
             t = threading.Thread(target=self.clock)
             t.daemon = True
@@ -145,155 +144,98 @@ class PresenceAdapter(Adapter):
 
         #done = self.brute_force_scan()
 
+        """
+        # This is no longer a continously running thread. Brute force scan only runs when the user clicks on the pair button.
         if self.use_brute_force_scan:
             if self.DEBUG:
-                print("Starting the periodic brute force scan thread")
+                print("Starting the brute force scan thread")
             try:
                 b = threading.Thread(target=self.brute_force_scan)
                 b.daemon = True
                 b.start()
             except:
                 print("Error starting the brute force scan thread")
+        """
+        
+        
+        
 
-        
-        #while self.running:
-        #    time.sleep(1)
-        
-        
-        
-        
-    def arpa_scan(self):
-        if self.DEBUG:
-            print("Initiating light scan using arp -a")
+    def add_from_config(self):
+        """Attempt to load addon settings."""
+
         try:
-            arpa_list = self.arpa()
-            if self.DEBUG:
-                print("Arpa light scan results: " + str(arpa_list))
-                print("arpa list length: " + str(len(arpa_list)))
-                
-            for key in arpa_list:
-                if self.DEBUG:
-                    print("Analyzing ARPA item: " + str(arpa_list[key]))
-                
-                try:
-                    if key not in self.previously_found:
-                        if self.DEBUG:
-                            print("-Adding to previously found list")
-            
-                        self.previously_found[key] = {} # adding empty device to the previously found dictionary
-                        self.previously_found[key]['name'] = arpa_list[key]['name']
-                        self.previously_found[key]['arpa_time'] = time.time() #arpa_list[key]['arpa_time'] #timestamp of initiation
-                        self.previously_found[key]['lastseen'] = None #arpa_list[key]['arpa_time'] #timestamp of initiation
-                        self.previously_found[key]['ip'] = arpa_list[key]['ip']
-                        self.previously_found[key]['mac_address'] = arpa_list[key]['mac_address']
-                        self.previously_found[key]['data-collection'] = True
-                        self.should_save = True # We will be adding this new device to the list, and then save that updated list.
-                        
-                    else:
-                        # Maybe we found a better name this time.
-                        if key not in self.saved_devices and arpa_list[key]['name'] not in ("","?","unknown"): # superfluous?
-                            if self.DEBUG:
-                                print("ARPA scan may have found a better hostname: " + str(arpa_list[key]['name']) + ", instead of " + str(self.previously_found[key]['name']) + " adding it to the previously_found devices dictionary")
-                            self.previously_found[key]['name'] = arpa_list[key]['name']
-                        
-                        try:
-                            self.previously_found[key]['ip'] = arpa_list[key]['ip']
-                        except:
-                            print("Error, could not update IP from arpa scan")
-                        
-                except Exception as ex:
-                    print("Error while analysing ARPA scan result item: " + str(ex))
-                    
+            database = Database(self.addon_name)
+
+            if not database.open():
+                return
+
+            config = database.load_config()
+            database.close()
+
+
         except Exception as ex:
-            print("Error doing light arpa scan: " + str(ex))
-        if self.DEBUG:
-            print("light scan using arp -a is done")
-        
-        
-        
-    def brute_force_scan(self):
-        
-        if not self.use_brute_force_scan:
-            return        
-            
-        """ Goes over every possible IP adddress in the local network (1-254) to check if it responds to a ping or arping request """
-        #while self.running:
-        if self.busy_doing_brute_force_scan == False and self.should_brute_force_scan == True:
-            self.busy_doing_brute_force_scan = True
-            
-            # Make sure the prefered interface still has an IP address (e.g. if network cable was disconnected, this will be fixed)
-            self.select_interface()
-            
-            
-            self.should_brute_force_scan = False
-            self.last_brute_force_scan_time = time.time()
-            if self.DEBUG:
-                print("Initiating a brute force scan of the entire local network")
-                
-            try:
-                if self.DEBUG:
-                    print("OWN IP = " + str(self.own_ip))
-                if valid_ip(self.own_ip):
-                    #while True:
-                    #def split_processing(items, num_splits=4):
-                    old_previous_found_count = len(self.previously_found)
-                    thread_count = 3 #2 #5
-                    split_size = 85 #127 #51
-                    threads = []
-                    for i in range(thread_count):
-                        # determine the indices of the list this thread will handle
-                        start = i * split_size
-                        if self.DEBUG:
-                            print("thread start = " + str(start))
-                        # special case on the last chunk to account for uneven splits
-                        end = 255 if i+1 == thread_count else (i+1) * split_size
-                        if self.DEBUG:
-                            print("thread end = " + str(end))
-                        # Create the thread
-                        threads.append(
-                            threading.Thread(target=self.scan, args=(start, end)))
-                        threads[-1].daemon = True
-                        threads[-1].start() # start the thread we just created
+            print("Error getting config data from database. Check the add-on's settings page for any issues. Error: " + str(ex))
+            self.close_proxy()
 
-                    # Wait for all threads to finish
-                    for t in threads:
-                        t.join()
+        
+        try:
+            if not config:
+                print("Error: required variables not found in config database. Check the addon's settings.")
+                return
 
-                    if self.DEBUG:
-                        print("Deep scan: all threads are done")
-                    # If new devices were found, save the JSON file.
-                    if len(self.previously_found) != old_previous_found_count:
-                        self.should_save = True
-                
-                    if self.should_save: # This is the only time the json file is stored.    
-                        self.save_to_json()
-                
-                # Remove devices that haven't been spotted in a long time.
-                #list(fdist1.keys())
-                
-                current_keys = [None] * len(list(self.previously_found.keys()));    
- 
-                #Copying all elements of one array into another    
-                for a in range(0, len(list(self.previously_found.keys()))):    
-                    current_keys[a] = list(self.previously_found.keys())[a];
-                
-                #current_keys = self.previously_found.keys()
-                for key in current_keys:
-                    try:
-                        if time.time() - self.previously_found[key]['arpa_time'] > 86400 and key not in self.saved_devices:
+
+            if 'Debugging' in config:
+                self.DEBUG = bool(config['Debugging'])
+            
+            
+            # Target IP
+            # Can be used to override normal behaviour (which is to scan the controller's neighbours), and target a very different group of IP addresses.
+            if 'Target IP' in config:
+                try:
+                    potential_ip = str(config['Target IP'])
+                    if potential_ip != "":
+                        if valid_ip(potential_ip):
+                            self.own_ip = potential_ip
+                            print("Using target IP from addon settings")
+                        else:
                             if self.DEBUG:
-                                print("Removing devices from found devices list because it hasn't been spotted in a day, and it's not a device the user has imported.")
-                            del self.previously_found[key]
-                    except Exception as ex:
+                                print("This addon does not understand '" + str(potential_ip) + "' as a valid IP address. Go to the add-on settings page to fix this. For now, the addon will try to detect and use the system's IP address as a base instead.")
+                        
+                except exception as ex:
+                    print("Error handling Target IP setting: " + str(ex))
+            else:
+                if self.DEBUG:
+                    print("No target IP address was available in the settings data")
+
+            # Network interface preference
+            if 'Network interface' in config:
+                if str(config['Network interface']) != "":
+                    if str(config['Network interface']) == "prefer wired":
+                        self.prefered_interface = "eth0"
+                    if str(config['Network interface']) == "prefer wireless":
+                        self.prefered_interface = "wlan0"
+
+            # how many minutes should "not recently spotted" be?
+            if 'Time window' in config:
+                try:
+                    if config['Time window'] != None and config['Time window'] != '':
+                        self.time_window = clamp(int(config['Time window']), 1, 10800) # In minutes. 'Grace period' could also be a good name.
                         if self.DEBUG:
-                            print("Could not remove old device: " + str(ex))
+                            print("Using time window value from settings: " + str(self.time_window))
+                except:
+                    print("No time window preference was found in the settings. Will use default.")
+
+            # Should brute force scans be attempted?
+            if 'Use brute force scanning' in config:
+                self.use_brute_force = bool(config['Use brute force scanning'])
+
+        except Exception as ex:
+            print("Error getting config data from database. Check the add-on's settings page for any issues. Error: " + str(ex))
+            self.close_proxy()
+            
+            
 
 
-            except Exception as ex:
-                print("Error doing brute force scan: " + str(ex))
-                self.busy_doing_brute_force_scan = False
-                self.should_brute_force_scan = False
-                self.last_brute_force_scan_time = time.time()
 
 
 
@@ -306,6 +248,10 @@ class PresenceAdapter(Adapter):
         succesfully_found = 0 # If all devices the user cares about are actually present, then no deep scan is necessary.
         while self.running:
             last_run = time.time()
+            
+            if self.DEBUG:
+                print("Clock TICK")
+            
             if self.use_brute_force_scan:
                 try:
                 
@@ -318,6 +264,7 @@ class PresenceAdapter(Adapter):
                                 if self.DEBUG:
                                     print("Should brute force scan is now set to true.")
                                 self.should_brute_force_scan = True
+                                #self.brute_force_scan()
                             else:
                                 if self.DEBUG:
                                     print("Should brute force scan, but already doing brute force scan")
@@ -361,11 +308,6 @@ class PresenceAdapter(Adapter):
                                 continue
                                 
                             self._add_device(key, new_name, detail) # The device did not exist yet, so we're creating it.
-
-
-
-
-
 
                         #
                         #  MINUTES AGO
@@ -414,7 +356,6 @@ class PresenceAdapter(Adapter):
                                     
                         except Exception as ex:
                             print("Could not add minutes_ago property" + str(ex))
-                        
                         
                         
                         #
@@ -611,91 +552,112 @@ class PresenceAdapter(Adapter):
                 
             if scan_time_delta < 55:
                 if self.DEBUG:
-                    print("scan took less than a minute. Will wait " + str(scan_time_delta + 5 ) + " seconds before starting the next round")
+                    print("clock: scan took less than a minute. Will wait " + str(scan_time_delta + 5 ) + " seconds before starting the next round")
                 delay = 55 - scan_time_delta
                 time.sleep(delay)
             time.sleep(5)
 
+        
+        
+        
 
-
-    def handle_device_saved(self, device_id, device):
-        """User saved a thing. Also called when the add-on starts."""
-        try:
-            if device_id.startswith('presence'):
-                if self.DEBUG:
-                    print("handle_device_saved. device_id = " + str(device_id) + ", device = " + str(device))
-
-                if device_id not in self.saved_devices:
-                    #print("Adding to saved_devices list: " + str(device_id.split("-")[1]))
-                    if self.DEBUG:
-                        print("Added " + str(device['title']) + " to saved devices list")
-                    
-                    original_title = "Unknown"
-                    try:
-                        if str(device['title']) != "":
-                            original_title = str(device['title'])
-                    except:
-                        print("Error getting original_title from data provided by the Gateway")
-                    
-                    #self.saved_devices.append({device_id:{'name':original_title}})
-                    self.saved_devices.append(device_id)
-                    
-                    data_collection = True
-                    try:
-                        if 'data-collection' in device['properties']:
-                            data_collection = bool(device['properties']['data-collection']['value'])
-                    except Exception as ex:
-                        print("Error getting data collection preference from saved device update info: " + str(ex))
-                
-                    #print("Data_collection value is now: " + str(data_collection))
-                    
-                    try:
-                        #pass
-                        if device_id not in self.previously_found:
-                            if self.DEBUG:
-                                print("Populating previously_found from handle_device_saved")
-                            self.previously_found[device_id] = {}
-                            self.previously_found[device_id]['name'] = str(device['title'])
-                            self.previously_found[device_id]['lastseen'] = None   
-                            self.previously_found[device_id]['arpa_time'] = int(time.time())
-                            self.previously_found[device_id]['data-collection'] = bool(data_collection)
-                    except Exception as ex:
-                        print("Error adding to found devices list: " + str(ex))
-                        
-        except Exception as ex:
-            print("Error dealing with existing saved devices: " + str(ex))
-
-
-
-    def unload(self):
-        """Add-on is shutting down."""
-        if self.DEBUG:
-            print("Network presence detector is being unloaded")
-        self.save_to_json()
-        self.running = False
-
-
-
-    def remove_thing(self, device_id):
-        """User removed a thing from the interface."""
-        if self.DEBUG:
-            print("Removing presence detection device: " + str(device_id))
-
-        try:
-            #print("THING TO REMOVE:" + str(self.devices[device_id]))
-            del self.previously_found[device_id]
-            #print("2")
-            obj = self.get_device(device_id)
-            #print("3")
-            self.handle_device_removed(obj)
+#
+#  BRUTE FORCE SCAN
+#
+        
+    def brute_force_scan(self):
+        
+        #if not self.use_brute_force_scan:
+        #    return        
+            
+        """ Goes over every possible IP adddress in the local network (1-254) to check if it responds to a ping or arping request """
+        #while self.running:
+        if self.busy_doing_brute_force_scan == False: # and self.should_brute_force_scan == True:
+            self.busy_doing_brute_force_scan = True
+            
+            # Make sure the prefered interface still has an IP address (e.g. if network cable was disconnected, this will be fixed)
+            self.select_interface()
+            
+            
+            self.should_brute_force_scan = False
+            self.last_brute_force_scan_time = time.time()
             if self.DEBUG:
-                print("Succesfully removed presence detection device")
-        except:
-            print("Removing presence detection thing failed")
-        #del self.devices[device_id]
-        self.should_save = True # saving changes to the json persistence file
+                print("Initiating a brute force scan of the entire local network")
+                
+            try:
+                if self.DEBUG:
+                    print("OWN IP = " + str(self.own_ip))
+                if valid_ip(self.own_ip):
+                    #while True:
+                    #def split_processing(items, num_splits=4):
+                    old_previous_found_count = len(self.previously_found)
+                    thread_count = 3 #2 #5
+                    split_size = 85 #127 #51
+                    threads = []
+                    for i in range(thread_count):
+                        # determine the indices of the list this thread will handle
+                        start = i * split_size
+                        if self.DEBUG:
+                            print("thread start = " + str(start))
+                        # special case on the last chunk to account for uneven splits
+                        end = 255 if i+1 == thread_count else (i+1) * split_size
+                        if self.DEBUG:
+                            print("thread end = " + str(end))
+                        # Create the thread
+                        threads.append(
+                            threading.Thread(target=self.scan, args=(start, end)))
+                        threads[-1].daemon = True
+                        threads[-1].start() # start the thread we just created
+
+                    # Wait for all threads to finish
+                    for t in threads:
+                        t.join()
+                        
+                    if self.DEBUG:
+                        print("Deep scan: all threads are done")
+                    # If new devices were found, save the JSON file.
+                    if len(self.previously_found) != old_previous_found_count:
+                        self.should_save = True
+                
+                    if self.should_save: # This is the only time the json file is stored.    
+                        self.save_to_json()
+                
+                # Remove devices that haven't been spotted in a long time.
+                #list(fdist1.keys())
+                
+                current_keys = [None] * len(list(self.previously_found.keys()));    
+ 
+                #Copying all elements of one array into another    
+                for a in range(0, len(list(self.previously_found.keys()))):    
+                    current_keys[a] = list(self.previously_found.keys())[a];
+                
+                #current_keys = self.previously_found.keys()
+                for key in current_keys:
+                    try:
+                        if time.time() - self.previously_found[key]['arpa_time'] > 86400 and key not in self.saved_devices:
+                            if self.DEBUG:
+                                print("Removing devices from found devices list because it hasn't been spotted in a day, and it's not a device the user has imported.")
+                            del self.previously_found[key]
+                    except Exception as ex:
+                        if self.DEBUG:
+                            print("Could not remove old device: " + str(ex))
 
 
+            except Exception as ex:
+                print("Error while doing brute force scan: " + str(ex))
+                self.busy_doing_brute_force_scan = False
+                self.should_brute_force_scan = False
+                self.last_brute_force_scan_time = time.time()
+
+
+            self.busy_doing_brute_force_scan = False
+            if self.DEBUG:
+                print("\nBRUTE FORCE SCAN DONE\n")
+
+        else:
+            if self.DEBUG:
+                print("\nWarning, Brute force scan was already running. Aborting starting another brute force scan.\n")
+                
 
     def scan(self, start, end):
         """Part of the brute force scanning function, which splits out the scanning over multiple threads."""
@@ -796,11 +758,120 @@ class PresenceAdapter(Adapter):
 
 
 
+
+
+
+
+
+    def handle_device_saved(self, device_id, device):
+        """User saved a thing. Also called when the add-on starts."""
+        try:
+            if device_id.startswith('presence'):
+                if self.DEBUG:
+                    print("handle_device_saved. device_id = " + str(device_id) + ", device = " + str(device))
+
+                if device_id not in self.saved_devices:
+                    #print("Adding to saved_devices list: " + str(device_id.split("-")[1]))
+                    if self.DEBUG:
+                        print("Added " + str(device['title']) + " to saved devices list")
+                    
+                    original_title = "Unknown"
+                    try:
+                        if str(device['title']) != "":
+                            original_title = str(device['title'])
+                    except:
+                        print("Error getting original_title from data provided by the Gateway")
+                    
+                    #self.saved_devices.append({device_id:{'name':original_title}})
+                    self.saved_devices.append(device_id)
+                    
+                    data_collection = True
+                    try:
+                        if 'data-collection' in device['properties']:
+                            data_collection = bool(device['properties']['data-collection']['value'])
+                    except Exception as ex:
+                        print("Error getting data collection preference from saved device update info: " + str(ex))
+                
+                    #print("Data_collection value is now: " + str(data_collection))
+                    
+                    try:
+                        #pass
+                        if device_id not in self.previously_found:
+                            if self.DEBUG:
+                                print("Populating previously_found from handle_device_saved")
+                            self.previously_found[device_id] = {}
+                            self.previously_found[device_id]['name'] = str(device['title'])
+                            self.previously_found[device_id]['lastseen'] = None   
+                            self.previously_found[device_id]['arpa_time'] = int(time.time())
+                            self.previously_found[device_id]['data-collection'] = bool(data_collection)
+                    except Exception as ex:
+                        print("Error adding to found devices list: " + str(ex))
+                        
+        except Exception as ex:
+            print("Error dealing with existing saved devices: " + str(ex))
+
+
+
+    def unload(self):
+        """Add-on is shutting down."""
+        if self.DEBUG:
+            print("Network presence detector is being unloaded")
+        self.save_to_json()
+        self.running = False
+
+
+
+    def remove_thing(self, device_id):
+        """User removed a thing from the interface."""
+        if self.DEBUG:
+            print("Removing presence detection device: " + str(device_id))
+
+        try:
+            #print("THING TO REMOVE:" + str(self.devices[device_id]))
+            del self.previously_found[device_id]
+            #print("2")
+            obj = self.get_device(device_id)
+            #print("3")
+            self.handle_device_removed(obj)
+            if self.DEBUG:
+                print("Succesfully removed presence detection device")
+        except:
+            print("Removing presence detection thing failed")
+        #del self.devices[device_id]
+        self.should_save = True # saving changes to the json persistence file
+
+
+
+
     def get_optimal_name(self,ip_address,found_device_name="",mac_address=""):
 
         # Try to get hostname
         nmb_result = ""
         
+        try:
+            nbtscan_command = 'nbtscan -q -e ' + str(self.own_ip) + '/24'
+            nbtscan_results = subprocess.run(nbtscan_command, shell=True, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
+            if self.DEBUG:
+                print("nbtscan_results: \n" + str(nbtscan_results.stdout))
+                
+            if ip_address in nbtscan_results.stdout:
+                if self.DEBUG:
+                    print("get_optimal_name: spotted IP address in nbtscan_results, so extracting name from there")
+                
+                for nbtscan_line in nbtscan_results.stdout.split('\n'):
+                    if ip_address in nbtscan_line:
+                        #line = line.replace("#PRE","")
+                        nbtscan_line = nbtscan_line.rstrip()
+                        nbtscan_parts = nbtscan_line.split("\t")
+                        if len(nbtscan_parts) > 0:
+                            #possible_name = "Presence - " + str(nbtscan_parts[1])
+                            nmb_result = str(nbtscan_parts[1])
+                            if self.DEBUG:
+                                print("name extracted from nbtscan_result: " + str(nmb_result))
+        
+        except Exception as ex:
+            print("Error: could not get name from arp -a line: " + str(ex))
+            
         #try:
             #nmb_result = socket.gethostbyaddr(ip_address)
             #nmb_result = hostname_lookup(ip_address)
@@ -903,6 +974,9 @@ class PresenceAdapter(Adapter):
         except Exception as ex:
             print("Error in name duplicate check: " + str(ex))
         
+        
+        if self.DEBUG:
+            print("         FINAL NAME: " + str(possible_name))
         return possible_name
         
         
@@ -926,83 +1000,7 @@ class PresenceAdapter(Adapter):
 
 
 
-
-
-    def add_from_config(self):
-        """Attempt to load addon settings."""
-
-        try:
-            database = Database(self.addon_name)
-
-            if not database.open():
-                return
-
-            config = database.load_config()
-            database.close()
-
-
-        except Exception as ex:
-            print("Error getting config data from database. Check the add-on's settings page for any issues. Error: " + str(ex))
-            self.close_proxy()
-
-        
-        try:
-            if not config:
-                print("Error: required variables not found in config database. Check the addon's settings.")
-                return
-
-
-            if 'Debugging' in config:
-                self.DEBUG = bool(config['Debugging'])
-            
-            
-            # Target IP
-            # Can be used to override normal behaviour (which is to scan the controller's neighbours), and target a very different group of IP addresses.
-            if 'Target IP' in config:
-                try:
-                    potential_ip = str(config['Target IP'])
-                    if potential_ip != "":
-                        if valid_ip(potential_ip):
-                            self.own_ip = potential_ip
-                            print("Using target IP from addon settings")
-                        else:
-                            if self.DEBUG:
-                                print("This addon does not understand '" + str(potential_ip) + "' as a valid IP address. Go to the add-on settings page to fix this. For now, the addon will try to detect and use the system's IP address as a base instead.")
-                        
-                except exception as ex:
-                    print("Error handling Target IP setting: " + str(ex))
-            else:
-                if self.DEBUG:
-                    print("No target IP address was available in the settings data")
-
-            # Network interface preference
-            if 'Network interface' in config:
-                if str(config['Network interface']) != "":
-                    if str(config['Network interface']) == "prefer wired":
-                        self.prefered_interface = "eth0"
-                    if str(config['Network interface']) == "prefer wireless":
-                        self.prefered_interface = "wlan0"
-
-            # how many minutes should "not recently spotted" be?
-            if 'Time window' in config:
-                try:
-                    self.time_window = clamp(int(config['Time window']), 1, 10800) # In minutes. 'Grace period' could also be a good name.
-                    if self.DEBUG:
-                        print("Time window value from settings page: " + str(self.time_window))
-                except:
-                    print("No time window preference was found in the settings. Will use default.")
-
-            # Should brute force scans be attempted?
-            if 'Use brute force scanning' in config:
-                self.use_brute_force = bool(config['Use brute force scanning'])
-
-        except Exception as ex:
-            print("Error getting config data from database. Check the add-on's settings page for any issues. Error: " + str(ex))
-            self.close_proxy()
-
-
-
-
+    # saves to persistence file
     def save_to_json(self):
         """Save found devices to json file."""
         try:
@@ -1025,9 +1023,10 @@ class PresenceAdapter(Adapter):
     def start_pairing(self, timeout):
         """Starting the pairing process."""
         self.arpa_scan()
-        if self.busy_doing_brute_force_scan == False:
-            self.should_brute_force_scan = True
-            self.brute_force_scan()
+        self.brute_force_scan()
+        #if self.busy_doing_brute_force_scan == False:
+        #    self.should_brute_force_scan = True
+        #    self.brute_force_scan()
 
     def cancel_pairing(self):
         """Cancel the pairing process."""
@@ -1035,22 +1034,84 @@ class PresenceAdapter(Adapter):
 
 
 
+
+#
+#  LIGHT SCAN
+#
+
+
+    def arpa_scan(self):
+        if self.DEBUG:
+            print("Initiating light scan using arp -a")
+        try:
+            arpa_list = self.arpa()
+            if self.DEBUG:
+                print("Arpa light scan results: " + str(arpa_list))
+                print("arpa list length: " + str(len(arpa_list)))
+                
+            for key in arpa_list:
+                if self.DEBUG:
+                    print("Analyzing ARPA item: " + str(arpa_list[key]))
+                
+                try:
+                    if key not in self.previously_found:
+                        if self.DEBUG:
+                            print("-Adding to previously found list")
+            
+                        self.previously_found[key] = {} # adding empty device to the previously found dictionary
+                        self.previously_found[key]['name'] = arpa_list[key]['name']
+                        self.previously_found[key]['arpa_time'] = time.time() #arpa_list[key]['arpa_time'] #timestamp of initiation
+                        self.previously_found[key]['lastseen'] = None #arpa_list[key]['arpa_time'] #timestamp of initiation
+                        self.previously_found[key]['ip'] = arpa_list[key]['ip']
+                        self.previously_found[key]['mac_address'] = arpa_list[key]['mac_address']
+                        self.previously_found[key]['data-collection'] = True
+                        self.should_save = True # We will be adding this new device to the list, and then save that updated list.
+                        
+                    else:
+                        # Maybe we found a better name this time.
+                        if key not in self.saved_devices and arpa_list[key]['name'] not in ("","?","unknown"): # superfluous?
+                            if self.DEBUG:
+                                print("ARPA scan may have found a better hostname: " + str(arpa_list[key]['name']) + ", instead of " + str(self.previously_found[key]['name']) + " adding it to the previously_found devices dictionary")
+                            self.previously_found[key]['name'] = arpa_list[key]['name']
+                        
+                        try:
+                            self.previously_found[key]['ip'] = arpa_list[key]['ip']
+                        except:
+                            print("Error, could not update IP from arpa scan")
+                        
+                except Exception as ex:
+                    print("Error while analysing ARPA scan result item: " + str(ex))
+                    
+        except Exception as ex:
+            print("Error doing light arpa scan: " + str(ex))
+            
+        if self.DEBUG:
+            print("light scan is done\n")
+
+
+
+
     #
-    #  This gives a quick first initial impression of the network.
+    #  This gives a quick impression of the network. Quicker than the brute force scan, which goes over every possible IP and tests them all.
     #
     def arpa(self):
+        
+        device_list = {}
         
         if self.busy_doing_arpa_scan == False:
             self.busy_doing_arpa_scan = True
             
-            nbtscan_command = 'nbtscan -q -e ' + str(self.own_ip) + '/24'
-            nbtscan_results = subprocess.run(nbtscan_command, shell=True, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
-            if self.DEBUG:
-                print("nbtscan_results: \n" + str(nbtscan_results.stdout))
+            try:
+                nbtscan_command = 'nbtscan -q -e ' + str(self.own_ip) + '/24'
+                nbtscan_results = subprocess.run(nbtscan_command, shell=True, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
+                if self.DEBUG:
+                    print("nbtscan_results: \n" + str(nbtscan_results.stdout))
+            except Exception as ex:
+                print("arpa: error running nbtscan command: " + str(ex))
             #os.system('nbtscan -q ' + str(self.own_ip))
         
             command = "arp -a"
-            device_list = {}
+            
             try:
                 result = subprocess.run(command, shell=True, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
                 
@@ -1133,62 +1194,64 @@ class PresenceAdapter(Adapter):
                 print("Arp -a error: " + str(ex))
                 #result = 'error'
             
-            self.busy_doing_arpa_scan = False
             
-            
-            
-        # Also try getting IPv6 addresses from "ip neighbour"
-        
-        ip_neighbor_output = subprocess.check_output(['ip', 'neighbor']).decode('utf-8')
-        #print(ip_neighbor_output)
-        for line in ip_neighbor_output.splitlines():
-            if self.DEBUG:
-                print("ip_neighbor line: " + str(line))
-            if line.endswith("REACHABLE") or line.endswith("STALE") or line.endswith("DELAY"):
+            # This is a little tacked-on here, but it can give some more quick results
+            try:
                 if self.DEBUG:
-                    print("stale or reachable")
-                neighbor_mac = extract_mac(line)
-                neighbor_ip = line.split(" ", 1)[0]
-                possible_name = "unknown"
-                if self.DEBUG:
-                    print("neighbor mac: " + str(neighbor_mac) + ", and ip: " + neighbor_ip)
-                if valid_mac(neighbor_mac):
-                    
-                    neighbor_mac_short = str(neighbor_mac.replace(":", ""))
-                    neighbor_id = 'presence-{}'.format(neighbor_mac_short)
+                    print("\n\nneighbour scan:")
+            
+                # Also try getting IPv6 addresses from "ip neighbour"
+            
+                ip_neighbor_output = subprocess.check_output(['ip', 'neighbor']).decode('utf-8')
+                #print(ip_neighbor_output)
+                for line in ip_neighbor_output.splitlines():
                     if self.DEBUG:
-                        print("- valid mac. Proposed neighbour id: " + str(neighbor_id))
-                    if neighbor_id not in self.previously_found and neighbor_id not in device_list:
+                        print("ip_neighbor line: " + str(line))
+                    if line.endswith("REACHABLE") or line.endswith("STALE") or line.endswith("DELAY"):
                         if self.DEBUG:
-                            print("not previously found, adding new device from neighbourhood data")
-                        if ip_address in nbtscan_results.stdout:
+                            print("stale or reachable")
+                        neighbor_mac = extract_mac(line)
+                        neighbor_ip = line.split(" ", 1)[0]
+                        possible_name = "unknown"
+                
+                        if neighbor_ip == self.own_ip:
                             if self.DEBUG:
-                                print("spotted IP address in nbtscan_results, so extracting name form there")
-                            try:
-                                for nbtscan_line in nbtscan_results.stdout.split('\n'):
-                                    if ip_address in nbtscan_line:
-                                        #line = line.replace("#PRE","")
-                                        nbtscan_line = nbtscan_line.rstrip()
-                                        nbtscan_parts = nbtscan_line.split("\t")
-                                        if len(nbtscan_parts) > 0:
-                                            possible_name = nbtscan_parts[1]
-                                            if self.DEBUG:
-                                                print("name extracted from nbtscan_result: " + str(found_device_name))
-                            except Exception as ex:
-                                if self.DEBUG:
-                                    print("Error getting nice name from nbtscan_results: " + str(ex))
-                        else:
-                            possible_name = self.get_optimal_name(neighbor_ip, 'Unnamed', neighbor_mac)
-                        
-                        device_list[neighbor_id] = {'ip':neighbor_ip,'mac_address':neighbor_mac,'name':possible_name,'arpa_time':int(time.time()),'lastseen':None}
-                    else:
+                                print("ip neighbor was own IP address, skipping")
+                            continue
+                
                         if self.DEBUG:
-                            print("neighbor ID existed already in detected devices list")
-        #o = run("python q2.py",capture_output=True,text=True)
-        #print(o.stdout)
+                            print("neighbor mac: " + str(neighbor_mac) + ", and ip: " + neighbor_ip)
+                        if valid_mac(neighbor_mac):
+                    
+                            neighbor_mac_short = str(neighbor_mac.replace(":", ""))
+                            neighbor_id = 'presence-{}'.format(neighbor_mac_short)
+                            if self.DEBUG:
+                                print("- valid mac. Proposed neighbour id: " + str(neighbor_id))
+                            if neighbor_id not in self.previously_found and neighbor_id not in device_list:
+                                if self.DEBUG:
+                                    print("not previously found, adding new device from neighbourhood data")
+                            
+                                possible_name = self.get_optimal_name(neighbor_ip, 'unnamed', neighbor_mac)
+                        
+                                device_list[neighbor_id] = {'ip':neighbor_ip,'mac_address':neighbor_mac,'name':possible_name,'arpa_time':int(time.time()),'lastseen':None}
+                            else:
+                                if self.DEBUG:
+                                    print("neighbor ID existed already in detected devices list")
+                #o = run("python q2.py",capture_output=True,text=True)
+                #print(o.stdout)
             
-        if self.DEBUG:
-            print("\narpa scan found devices list: " + str(device_list))
+                if self.DEBUG:
+                    print("\narpa scan found devices list: " + str(device_list))
+            
+            except Exception as ex:
+                print("arpa: error while doing ip neighbour scan: " + str(ex))
+        
+            self.busy_doing_arpa_scan = False
+                
+        else:
+            if self.DEBUG:
+                print("Warning, was already busy doing a light scan. Returning empty list..")
+                
         return device_list
         #return str(subprocess.check_output(command, shell=True).decode())
         
