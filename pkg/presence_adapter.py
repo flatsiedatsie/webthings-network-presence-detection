@@ -92,7 +92,7 @@ class PresenceAdapter(Adapter):
 
         except (IOError, ValueError):
             self.previously_found = {}
-            print("Failed to load JSON file, generating new one.")
+            print("Failed to load persistent data JSON file, generating new one.")
             try:
                 with open(self.persistence_file_path, 'w') as f:
                     f.write('{}')
@@ -843,7 +843,7 @@ class PresenceAdapter(Adapter):
 
 
 
-    def get_optimal_name(self,ip_address,found_device_name="",mac_address=""):
+    def get_optimal_name(self,ip_address,found_device_name="unnamed",mac_address=""):
 
         # Try to get hostname
         nmb_result = ""
@@ -898,17 +898,19 @@ class PresenceAdapter(Adapter):
             if found_device_name == '?' or found_device_name == '' or valid_ip(found_device_name):
                 if self.DEBUG: 
                     print("Will try to figure out a vendor name based on the mac address")
-                vendor = 'unnamed'
+                vendor = ip_address
                 try:
                     # Get the vendor name, and shorten it. It removes
                     # everything after the comma. Thus "Apple, inc"
                     # becomes "Apple"
                     vendor = get_vendor(mac_address)
+                    if self.DEBUG:
+                        print("get_vendor mac lookup result: " + str(vendor))
                     if vendor is not None:
                         vendor = vendor.split(' ', 1)[0]
                         vendor = vendor.split(',', 1)[0]
                     else:
-                        vendor = 'unnamed'
+                        vendor = ip_address
                 except ValueError:
                     pass
 
@@ -918,6 +920,9 @@ class PresenceAdapter(Adapter):
             found_device_name = nmb_result
                
         # At this point we definitely have something.
+        
+        if found_device_name == 'unnamed':
+            found_device_name = str(ip_address)
         
         found_device_name = "Presence - " + found_device_name
         possible_name = found_device_name
@@ -961,7 +966,7 @@ class PresenceAdapter(Adapter):
                             could_be_same_same = True
                             if self.DEBUG:
                                 print("-names collided: " + str(possible_name))
-                            possible_name = found_device_name + " " + str(i)
+                            possible_name = found_device_name + "  (" + str(ip_address) + ")"
                             if self.DEBUG:
                                 print("-now testing new name: " + str(possible_name))
                             i += 1 # up the count for a potential next round
@@ -1126,7 +1131,7 @@ class PresenceAdapter(Adapter):
                         name = "?"
                         mac_short = ""
                         found_device_name = "unnamed"
-                        possible_name = "Presence - unnamed device"
+                        possible_name = "Presence - unnamed"
                         
                         try:
                             mac_address_list = re.findall(r'(([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2})', str(line))[0]
@@ -1146,6 +1151,7 @@ class PresenceAdapter(Adapter):
                                 if self.DEBUG:
                                     print("Error: not a valid IP address?")
                                 continue
+                            found_device_name = ip_address
                         except Exception as ex:
                             print("no IP address in line: " + str(ex))
                         
