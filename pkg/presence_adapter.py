@@ -60,6 +60,7 @@ class PresenceAdapter(Adapter):
         self.selected_interface = "eth0"
         
         self.busy_doing_arpa_scan = False
+        self.devices_excluding_arping = ""
         
         self.use_brute_force_scan = False; # was used for continuous brute force scanning. This has been deprecated.
         self.should_brute_force_scan = True
@@ -228,6 +229,13 @@ class PresenceAdapter(Adapter):
             # Should brute force scans be attempted?
             if 'Use brute force scanning' in config:
                 self.use_brute_force = bool(config['Use brute force scanning'])
+
+            if 'Addresses to not arping' in config:
+                try:
+                    self.devices_excluding_arping = str(config['Devices excluding arping'])  
+                    print("Devices excluding ARPing from settings: " + str(self.devices_excluding_arping))
+                except:
+                    print("No addresses to not arping were found in the settings.")
 
         except Exception as ex:
             print("Error getting config data from database. Check the add-on's settings page for any issues. Error: " + str(ex))
@@ -490,7 +498,8 @@ class PresenceAdapter(Adapter):
                                     if self.DEBUG:
                                         print(">> Ping could not find " + str(self.previously_found[key]['name']) + " at " + str(self.previously_found[key]['ip']) + ". Maybe Arping can.")
                                     try:
-                                        if self.arping(self.previously_found[key]['ip'], 1) == 0:
+                                        
+                                        if not self.previously_found[key]['ip'] in self.devices_excluding_arping and not self.previously_found[key]['mac_address'] in self.devices_excluding_arping and self.arping(self.previously_found[key]['ip'], 1) == 0:
                                             self.previously_found[key]['lastseen'] = int(time.time())
                                             if self.DEBUG:
                                                 print(">> Arping found it.")
