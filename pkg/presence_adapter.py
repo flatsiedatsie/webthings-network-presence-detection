@@ -117,6 +117,7 @@ class PresenceAdapter(Adapter):
         if not self.DEBUG:
             time.sleep(5) # give it a few more seconds to make sure the network is up
            
+        self.selected_interface = "wlan0"
         self.select_interface() # checks if the preference is possible.
         
         if self.DEBUG:
@@ -1273,15 +1274,19 @@ class PresenceAdapter(Adapter):
 
 
     def select_interface(self):
-        eth0_output = subprocess.check_output(['ifconfig', 'eth0']).decode('utf-8')
-        #print("eth0_output = " + str(eth0_output))
-        wlan0_output = subprocess.check_output(['ifconfig', 'wlan0']).decode('utf-8')
-        #print("wlan0_output = " + str(wlan0_output))
-        if "inet " in eth0_output and self.prefered_interface == "eth0":
-            self.selected_interface = "eth0"
-        if not "inet " in eth0_output and self.prefered_interface == "eth0":
-            self.selected_interface = "wlan0"
-        if "inet " in wlan0_output and self.prefered_interface == "wlan0":
+        try:
+            eth0_output = subprocess.check_output(['ifconfig', 'eth0']).decode('utf-8')
+            #print("eth0_output = " + str(eth0_output))
+            wlan0_output = subprocess.check_output(['ifconfig', 'wlan0']).decode('utf-8')
+            #print("wlan0_output = " + str(wlan0_output))
+            if "inet " in eth0_output and self.prefered_interface == "eth0":
+                self.selected_interface = "eth0"
+            if not "inet " in eth0_output and self.prefered_interface == "eth0":
+                self.selected_interface = "wlan0"
+            if "inet " in wlan0_output and self.prefered_interface == "wlan0":
+                self.selected_interface = "wlan0"
+        except Exception as ex:
+            print("Error in select_interface: " + str(ex))
             self.selected_interface = "wlan0"
         
             
