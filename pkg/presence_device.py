@@ -44,7 +44,7 @@ class PresenceDevice(Device):
             self,
             'details',
             {
-                'title': 'Details',
+                'title': 'IP address',
                 'type': 'string',
                 'readOnly': True,
             },
