@@ -17,6 +17,7 @@
   "options": {
     "default": {
       "Time window": 10,
+	  "Show Candle controllers": false,
 	  "Network interface":"prefer wired",
 	  "Target IP": "",
 	  "Addresses to not arping": "",
@@ -27,6 +28,10 @@
         "Time window": {
           "description": "How many minutes can a device disappear before it is marked offline? The default is 10 minutes. The minimum is 1, the maximum is 10800 (7 days).",
           "type": "number"
+        },
+        "Show Candle controllers": {
+          "description": "Normally Candle controllers are ignored. If you want to see them in the scan results, check this box.",
+          "type": "boolean"
         },
         "Network interface": {
           "description": "Advanced. Your device may be connected to a network over wifi or through a network cable. In theory these could even be two different networks. That's why you can select if you prefer to scan on the wireless (wlan0) or wired (eth0) network.",

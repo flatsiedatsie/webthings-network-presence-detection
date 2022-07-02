@@ -1,20 +1,28 @@
 """Utility functions."""
 
-import socket       # For network connections
-import platform     # For getting the operating system name
-import subprocess   # For executing a shell command
+
+import os
 import re           # For doing regex
 import time
-import os
+import socket       # For network connections
+import hashlib      # For hashing mac addresses
+import platform     # For getting the operating system name
+import subprocess   # For executing a shell command
+
 
 
 def valid_ip(ip):
-    return ip.count('.') == 3 and \
-        all(0 <= int(num) < 256 for num in ip.rstrip().split('.')) and \
-        len(ip) < 16 and \
-        all(num.isdigit() for num in ip.rstrip().split('.'))
-
-
+    valid = False
+    try:
+        if ip.count('.') == 3 and \
+            all(0 <= int(num) < 256 for num in ip.rstrip().split('.')) and \
+            len(ip) < 16 and \
+            all(num.isdigit() for num in ip.rstrip().split('.')):
+            valid = True
+    except Exception as ex:
+        #print("error in valid_ip: " + str(ex))
+        pass
+    return valid
 
 
 def extract_mac(line):
@@ -28,12 +36,25 @@ def valid_mac(mac):
         all(0 <= int(num, 16) < 256 for num in mac.rstrip().split(':')) and \
         not all(int(num, 16) == 255 for num in mac.rstrip().split(':'))
 
+def mac_to_hash(mac):
+    #hash_string = str(hash(mac))
+    #if hash_string[:1] == '-':
+    #    hash_string = hash_string[1:]
+    #return hash_string
+    
+    hash_object = hashlib.md5(mac.encode())
+    hash_string = hash_object.hexdigest()
+    hash_string = hash_string[:12]
+    #print("hashed mac: " + str(hash_string))
+    return hash_string
+
+
 
 def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
 
 
-def get_ip():
+def get_own_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         # doesn't even have to be reachable
