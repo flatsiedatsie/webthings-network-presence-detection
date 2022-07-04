@@ -72,7 +72,7 @@ class PresenceAdapter(Adapter):
         self.last_avahi_scan_time = 0
         self.raw_avahi_scan_result = ""
         self.avahi_lookup_table = {}
-        self.candle_controllers_ip_list = []
+        self.candle_controllers_ip_list = set()
         self.ignore_candle_controllers = True
         
         self.nbtscan_results = ""
@@ -255,7 +255,7 @@ class PresenceAdapter(Adapter):
                         print("Devices excluding ARPing from settings: " + str(self.devices_excluding_arping))
                 except:
                     if self.DEBUG:
-                        print("No addresses to not arping were found in the settings.")
+                        print("No addresses to exclude from arping were found in the settings.")
 
         except Exception as ex:
             print("Error getting config data from database. Check the add-on's settings page for any issues. Error: " + str(ex))
@@ -300,13 +300,20 @@ class PresenceAdapter(Adapter):
                             if self.DEBUG:
                                 print("all devices present and accounted for. Will skip brute force scan.")
                 except Exception as ex:
-                    print("Clock: error running periodic deep scan: " + str(ex))
+                    if self.DEBUG:
+                        print("Clock: error running periodic deep scan: " + str(ex))
 
             succesfully_found = 0
             try:
                 for key in self.previously_found:
                     if self.DEBUG:
-                        print("clock -> " + str(key))
+                        print("")
+                        print("clock -> key : " + str(key))
+                        print("clock -> name: " + str(self.previously_found[key]['name']))
+                        print("clock -> ip  : " + str(self.previously_found[key]['ip']))
+                        print("clock -> prev_found: " + str(self.previously_found[key]))
+                        
+                        print("")
                     # Update device's last seen properties
                     try:
                         # Make sure all devices and properties exist. Should be superfluous really.
@@ -314,7 +321,8 @@ class PresenceAdapter(Adapter):
                             print("clock - str(key) = " + str(key) + " has " + str(self.previously_found[key]))
                         if str(key) not in self.devices:
                             
-                            #print(str(self.previously_found[str(key)]) + " was not turned into an internal devices object yet.")
+                            if self.DEBUG:
+                                print(str(self.previously_found[str(key)]) + " was not turned into an internal devices object yet.")
                             detail = "..."
                             try:
                                 detail = self.previously_found[key]['ip']
@@ -323,18 +331,21 @@ class PresenceAdapter(Adapter):
                                     print("No IP address in previously found list (yet)")
                                 continue
                                 
-                            new_name = "Unknown"
+                            new_name = "unnamed"
                             try:
                                 new_name = self.previously_found[key]['name']
                             except:
                                 if self.DEBUG:
                                     print("No name present in previously found list")
+                                continue
                             
-                            if new_name == "Unknown" or new_name == "?" or new_name == "":
+                            if new_name == "unnamed" or new_name == "?" or new_name == "": # TODO: isn't the name "Presence - unnamed (ip address)" ?
                                 if self.DEBUG:
                                     print("No good name found yet, skipping device generation and update")
                                 continue
                                 
+                            if self.DEBUG:
+                                print("adding device")
                             self._add_device(key, new_name, detail) # The device did not exist yet, so we're creating it.
 
                         #
@@ -377,13 +388,17 @@ class PresenceAdapter(Adapter):
                             elif minutes_ago != None:
                                 if self.DEBUG:
                                     print("Minutes_ago of " + str(self.previously_found[key]['name']) + " is: " + str(minutes_ago))
-                            
+                            else:
+                                if self.DEBUG:
+                                    print("eh? minutes ago fell through")
+                                    
                             if self.DEBUG:
                                 print("updating minutes ago")
                             self.devices[key].properties["minutes_ago"].update(minutes_ago)
                                     
                         except Exception as ex:
-                            print("Could not add minutes_ago property" + str(ex))
+                            if self.DEBUG:
+                                print("Could not add/update minutes_ago property" + str(ex))
                         
                         
                         #
@@ -445,16 +460,18 @@ class PresenceAdapter(Adapter):
                     
                 
                 
-                
+                if self.DEBUG:
+                    print("\n\nself.saved_devices: " + str(self.saved_devices))
+                    
                 # Scan the devices the user cares about (once a minute)
                 for key in self.saved_devices:
                     if self.DEBUG:
-                        print("")
+                        print("_\n__\n___")
                         print("clock: scanning every minute: key in saved_devices: " + str(key))
                     
                     if str(key) not in self.previously_found:
                         if self.DEBUG:
-                            print("Saved thing was not found through scanning yet (not yet added to previously_found), skipping update attempt")
+                            print("Saved thing was not found through scanning yet (not yet added to previously_found), skipping update attempt: " + str(key))
                         continue
                         
                     if self.DEBUG:
@@ -518,37 +535,45 @@ class PresenceAdapter(Adapter):
                                     if self.DEBUG:
                                         print(">> Ping could not find " + str(self.previously_found[key]['name']) + " at " + str(self.previously_found[key]['ip']) + ". Maybe Arping can.")
                                     try:
-                                        
-                                        if not self.previously_found[key]['ip'] in self.devices_excluding_arping and not self.previously_found[key]['mac_address'] in self.devices_excluding_arping and self.arping(self.previously_found[key]['ip'], 1) == 0:
-                                            self.previously_found[key]['lastseen'] = int(time.time())
-                                            if self.DEBUG:
-                                                print(">> Arping found it.")
-                                            succesfully_found += 1
-                                            self.not_seen_since[key] = None
+                                        if 'mac_address' in self.previously_found[key]:
+                                            if not self.previously_found[key]['ip'] in self.devices_excluding_arping and not self.previously_found[key]['mac_address'] in self.devices_excluding_arping and self.arping(self.previously_found[key]['ip'], 1) == 0:
+                                                self.previously_found[key]['lastseen'] = int(time.time())
+                                                if self.DEBUG:
+                                                    print(">> Arping found it. lastseen updated.")
+                                                succesfully_found += 1
+                                                self.not_seen_since[key] = None
+                                            else:
+                                                if self.DEBUG:
+                                                    print(">> Arping also could not find the device.")
+                                                if key not in self.not_seen_since:
+                                                    if self.DEBUG:
+                                                        print("--adding first not_seen_since time")
+                                                    self.not_seen_since[key] = int(time.time())
+                                            
+                                                if self.not_seen_since[key] == None:
+                                                    if self.DEBUG:
+                                                        print("--not_seen_since time was None. Setting current time instead.")
+                                                    self.not_seen_since[key] = int(time.time())
+                                                    if self.DEBUG:
+                                                        print("- Remembering fresh not-seen-since time")
+                                                elif self.not_seen_since[key] + (60 * (self.time_window + 1)) < time.time():
+                                                    if self.DEBUG:
+                                                        print("NOT SPOTTED AT ALL DURATION IS NOW LONGER THAN THE TIME WINDOW!")
+                                                    recently = False
+                                                    if 'recently1' not in self.devices[key].properties:
+                                                        if self.DEBUG:
+                                                            print("+ Adding recently spotted property to presence device")
+                                                        self.devices[key].add_boolean_child("recently1", "Recently spotted", recently, True, "BooleanProperty") # name, title, value, readOnly, @type
+                                                    else:
+                                                        self.devices[key].properties["recently1"].update(recently)
                                         else:
                                             if self.DEBUG:
-                                                print(">> Arping also could not find the device.")
-                                            if key not in self.not_seen_since:
-                                                self.not_seen_since[key] = int(time.time())
-                                            
-                                            if self.not_seen_since[key] == None:
-                                                self.not_seen_since[key] = int(time.time())
-                                                if self.DEBUG:
-                                                    print("- Remembering first not-seen-since time")
-                                            elif self.not_seen_since[key] + (60 * (self.time_window + 1)) < time.time():
-                                                if self.DEBUG:
-                                                    print("NOT SPOTTED AT ALL DURATION IS NOW LONGER THAN THE TIME WINDOW!")
-                                                recently = False
-                                                if 'recently1' not in self.devices[key].properties:
-                                                    if self.DEBUG:
-                                                        print("+ Adding recently spotted property to presence device")
-                                                    self.devices[key].add_boolean_child("recently1", "Recently spotted", recently, True, "BooleanProperty") # name, title, value, readOnly, @type
-                                                else:
-                                                    self.devices[key].properties["recently1"].update(recently)
+                                                print("Should arping, but missing mac address: " + str(self.previously_found[key]))
                                                 
                                                 
                                     except Exception as ex:
-                                        print("Error trying Arping: " + str(ex))
+                                        if self.DEBUG:
+                                            print("Error trying Arping: " + str(ex))
                                 else:
                                     if self.DEBUG:
                                         print(">> Ping found device")
@@ -574,6 +599,10 @@ class PresenceAdapter(Adapter):
             except Exception as ex:
                 if self.DEBUG:
                     print("Clock thread error: " + str(ex))
+            
+            
+            if self.should_save: # This is the only time the json file is stored.    
+                self.save_to_json() # also sets should_save to false again
             
             saved_devices_count = len(self.saved_devices)
             scan_time_delta = time.time() - last_run
@@ -652,9 +681,6 @@ class PresenceAdapter(Adapter):
                     if len(self.previously_found) != old_previous_found_count:
                         self.should_save = True
                 
-                    if self.should_save: # This is the only time the json file is stored.    
-                        self.save_to_json()
-                
                 # Remove devices that haven't been spotted in a long time.
                 #list(fdist1.keys())
                 
@@ -667,14 +693,14 @@ class PresenceAdapter(Adapter):
                 #current_keys = self.previously_found.keys()
                 for key in current_keys:
                     try:
-                        if 'arpa_time' in self.previously_found[key]:
-                            if time.time() - self.previously_found[key]['arpa_time'] > 86400 and key not in self.saved_devices:
+                        if 'first_seen' in self.previously_found[key]:
+                            if time.time() - self.previously_found[key]['first_seen'] > 86400 and key not in self.saved_devices:
                                 if self.DEBUG:
                                     print("Removing devices from found devices list because it hasn't been spotted in a day, and it's not a device the user has imported.")
                                 del self.previously_found[key]
                         else:
                             if self.DEBUG:
-                                print("Error, arpa_time not in previously found device?: " + str(self.previously_found[key]))
+                                print("Error, first_seen not in previously found device?: " + str(self.previously_found[key]))
                     except Exception as ex:
                         if self.DEBUG:
                             print("Could not remove old device: " + str(ex))
@@ -776,6 +802,7 @@ class PresenceAdapter(Adapter):
                             
                         if self.DEBUG:
                             print(".")
+                            print("--ip:  " + ip_address)
                             print("--mac:  " + mac_address)
                             print("--name: " + possible_name)
                             print("--_id: " + _id)
@@ -787,20 +814,19 @@ class PresenceAdapter(Adapter):
                                     print("scan is not adding a newly detected Candle controller")
                                 continue
                             else:
+                                self.previously_found[str(_id)] = {'ip':ip_address,'mac_address':mac_address,'name':possible_name,'first_seen':now,'lastseen':now}
                                 if self.DEBUG:
-                                    print("ping scan: adding device to found devices list\n")
-                                self.previously_found[str(_id)] = {'ip':ip_address,'mac_address':mac_address,'name':possible_name,'arpa_time':now,'lastseen':now}
+                                    print("\nping scan: added device to found devices list: " + str(self.previously_found[str(_id)]))
                         
-                        """
                         else:
                             # update
-                            self.previously_found[_id]['arpa_time'] = now # creation time
-                            self.previously_found[_id]['mac_address'] = mac_address
+                            #self.previously_found[_id]['first_seen'] = now # creation time
+                            #self.previously_found[_id]['mac_address'] = mac_address
                      
                             self.previously_found[_id]['lastseen'] = now    
-                            self.previously_found[_id]['name'] = str(possible_name) # The name may be better, or it may have changed.
+                            #self.previously_found[_id]['name'] = str(possible_name) # The name may be better, or it may have changed.
                             self.previously_found[_id]['ip'] = ip_address
-                        """
+                        
                         
                 
                     
@@ -866,7 +892,7 @@ class PresenceAdapter(Adapter):
             
                 avahi_browse_command = ["avahi-browse","-p","-l","-a","-r","-k","-t"] # avahi-browse -p -l -a -r -k -t
                 #avahi_network_devices_ip_list = []
-                candle_controllers_ip_list = []
+                candle_controllers_ip_list = set()
                 avahi_network_devices = {}
                 try:
             
@@ -895,7 +921,7 @@ class PresenceAdapter(Adapter):
                                         if ip_address not in candle_controllers_ip_list:
                                             if self.DEBUG:
                                                 print("-it's a candle controller. Adding IP to list.")
-                                            candle_controllers_ip_list.append(ip_address)
+                                            candle_controllers_ip_list.add(ip_address)
                                         
                                     
                                         # get name
@@ -948,20 +974,37 @@ class PresenceAdapter(Adapter):
                                         print("- _id  from avahi line: " + str(_id))
                                         print("- name from avahi line: " + str(found_device_name))
                                         
-                                    if _id not in self.previously_found:
-                                        possible_name = self.get_optimal_name(ip_address, found_device_name, mac_address)
-                                    #else:
-                                    #    possible_name = self.previously_found[_id]['name']
+                                    if _id not in device_dict:
                                         
-                                        if self.ignore_candle_controllers and ip_address in self.candle_controllers_ip_list:
-                                            if self.DEBUG:
-                                                print("quick scan (avahi) is ignoring a Candle controller")
+                                        if _id in self.previously_found:
+                                
+                                            if 'name' in self.previously_found[_id]:
+                                                #found_device_name = self.previously_found[_id]['name']
+                                                self.previously_found[_id]['ip'] = ip_address
+                                                if self.DEBUG:
+                                                    print("quick scan: avahi: id was already in previously_found. Name: " + str(self.previously_found[_id]['name']))
+                                                
+                                        
+                                            else:
+                                                if self.DEBUG:
+                                                    print("quick scan: avahi: Error, no name attribute in previously_found?: " + str(self.previously_found[_id]))
+                                
                                             continue
+                                        
                                         else:
-                                            if self.DEBUG:
-                                                print("quick scan: avahi: adding device to found devices list\n")
-                                            device_dict[_id] = {'ip':ip_address,'mac_address':mac_address,'name':possible_name,'arpa_time':int(time.time()),'lastseen':None}
-                                    
+                                            possible_name = self.get_optimal_name(ip_address, found_device_name, mac_address)
+                                        #else:
+                                        #    possible_name = self.previously_found[_id]['name']
+                                        
+                                            if self.ignore_candle_controllers and ip_address in self.candle_controllers_ip_list:
+                                                if self.DEBUG:
+                                                    print("quick scan (avahi) is ignoring a Candle controller")
+                                                continue
+                                            else:
+                                                if self.DEBUG:
+                                                    print("quick scan: avahi: adding device to found devices list\n")
+                                                device_dict[_id] = {'ip':ip_address,'mac_address':mac_address,'name':possible_name,'first_seen':int(time.time()),'lastseen':None}
+                                        
                                         
                                 
                         except Exception as ex:
@@ -1047,99 +1090,104 @@ class PresenceAdapter(Adapter):
                         if self.DEBUG:
                             print("quick scan: arp -a: mac and ip ok")
                             
-                        # Now that IP and Mac are known, try to get the name (found_device_name)
-                        try:
+                        if _id not in device_dict:
+                        
+                            # Now that IP and Mac are known, try to get the name (found_device_name)
+                            try:
                             
-                            # maybe the device is already known
-                            if _id in self.previously_found: # TODO: why even continue here?
+                            
+                            
+                                # maybe the device is already known
+                                if _id in self.previously_found:
+                                    if 'name' in self.previously_found[_id]:
+                                        #found_device_name = self.previously_found[_id]['name']
+                                        self.previously_found[_id]['ip'] = ip_address
+                                        if self.DEBUG:
+                                            print("quick scan: arp -a: id was already in previously_found. Name: " + str(self.previously_found[_id]['name']))
+                                        
+                                        
+                                    else:
+                                        if self.DEBUG:
+                                            print("quick scan: arp -a: Error, no name attribute in previously_found?")
                                 
+                                    continue
                                 
-                                if 'name' in self.previously_found[_id]:
-                                    found_device_name = self.previously_found[_id]['name']
+                                # if not, maybe the name is in the Avahi-browse lookup table
+                                elif ip_address in self.avahi_lookup_table: # It could be that the name was found by Avahi, but it did not find the mac, which arp might find instead
                                     if self.DEBUG:
-                                        print("quick scan: arp -a: id was already in previously_found, and the name matched too")
+                                        print("quick scan: arp -a: spotted name in avahi lookup table")
+                                    found_device_name = str(self.avahi_lookup_table[ip_address])
+                                    #possible_name = found_device_name #self.get_optimal_name(ip_address, found_device_name, mac_address)
+                            
+                                # If not in avahi, maybe the NBT scan found it
+                                elif ip_address in nbtscan_results.stdout:
+                                    if self.DEBUG:
+                                        print("quick scan: arp -a: spotted IP address in nbtscan_results, so extracting name form there")
+                                    try:
+                                        for nbtscan_line in nbtscan_results.stdout.split('\n'):
+                                            if ip_address in nbtscan_line:
+                                                #line = line.replace("#PRE","")
+                                                nbtscan_line = nbtscan_line.rstrip()
+                                                nbtscan_parts = nbtscan_line.split("\t")
+                                                if len(nbtscan_parts) > 0:
+                                                    found_device_name = str(nbtscan_parts[1])
+                                                    #possible_name =self.get_optimal_name(ip_address, nbtscan_parts[1], mac_address)
+                                                    if self.DEBUG:
+                                                        print("quick scan: arp -a: name extracted from nbtscan_result: " + str(found_device_name))
+                                    except Exception as ex:
+                                        if self.DEBUG:
+                                            print("quick scan: arp -a: Error getting nice name from nbtscan_results: " + str(ex))
+                            
+                                # if not, get the name from the arp -a line
+                                elif ' (' in line:
+                                    found_device_name = str(line.split(' (')[0])
+                                    if self.DEBUG:
+                                        print("quick scan: arp -a: remove part after ( from line")
                                 else:
                                     if self.DEBUG:
-                                        print("quick scan: arp -a: Error, no name attribute in previously_found?")
-                                
-                                continue
-                                
-                            # if not, maybe the name is in the Avahi-browse lookup table
-                            elif ip_address in self.avahi_lookup_table: # It could be that the name was found by Avahi, but it did not find the mac, which arp might find instead
+                                        print("quick scan: arp -a: no name?")
+                        
+                            except Exception as ex:
                                 if self.DEBUG:
-                                    print("quick scan: arp -a: spotted name in avahi lookup table")
-                                found_device_name = str(self.avahi_lookup_table[ip_address])
-                                #possible_name = found_device_name #self.get_optimal_name(ip_address, found_device_name, mac_address)
+                                    print("Error: quick scan: arp -a: could not get name from arp -a line: " + str(ex))
+                        
+                        
+                            if self.DEBUG:
+                                print("quick scan: arp -a: found_device_name: " + str(found_device_name))
+                        
                             
-                            # If not in avahi, maybe the NBT scan found it
-                            elif ip_address in nbtscan_results.stdout:
+                            try:
+                                # Add the device to the dictionary of found devices
+                                possible_name = self.get_optimal_name(ip_address, found_device_name, mac_address)
+                            
                                 if self.DEBUG:
-                                    print("quick scan: arp -a: spotted IP address in nbtscan_results, so extracting name form there")
-                                try:
-                                    for nbtscan_line in nbtscan_results.stdout.split('\n'):
-                                        if ip_address in nbtscan_line:
-                                            #line = line.replace("#PRE","")
-                                            nbtscan_line = nbtscan_line.rstrip()
-                                            nbtscan_parts = nbtscan_line.split("\t")
-                                            if len(nbtscan_parts) > 0:
-                                                found_device_name = str(nbtscan_parts[1])
-                                                #possible_name =self.get_optimal_name(ip_address, nbtscan_parts[1], mac_address)
-                                                if self.DEBUG:
-                                                    print("quick scan: arp -a: name extracted from nbtscan_result: " + str(found_device_name))
-                                except Exception as ex:
+                                    print("quick scan: arp -a: possible_name: " + str(possible_name))
+                            
+                                if self.ignore_candle_controllers and ip_address in self.candle_controllers_ip_list:
                                     if self.DEBUG:
-                                        print("quick scan: arp -a: Error getting nice name from nbtscan_results: " + str(ex))
+                                        print("quick scan: arp -a: ignoring a Candle controller")
+                                    continue
+                                else:
+                                    if self.DEBUG:
+                                        print("quick scan: arp -a: adding device to found devices list\n")
+                                    device_dict[_id] = {'ip':ip_address,'mac_address':mac_address,'name':possible_name,'first_seen':int(time.time()),'lastseen':None}
                             
-                            # if not, get the name from the arp -a line
-                            elif ' (' in line:
-                                found_device_name = str(line.split(' (')[0])
+                            
+                            
+                            except Exception as ex:
                                 if self.DEBUG:
-                                    print("quick scan: arp -a: remove part after ( from line")
-                            else:
-                                if self.DEBUG:
-                                    print("quick scan: arp -a: no name?")
-                        
-                        except Exception as ex:
-                            if self.DEBUG:
-                                print("Error: quick scan: arp -a: could not get name from arp -a line: " + str(ex))
+                                    print("Error: quick scan: arp -a: could not get name from arp -a line: " + str(ex))
                         
                         
-                        if self.DEBUG:
-                            print("quick scan: arp -a: found_device_name: " + str(found_device_name))
-                        
-                        
-                        try:
-                            # Add the device to the dictionary of found devices
-                            possible_name = self.get_optimal_name(ip_address, found_device_name, mac_address)
+                            #if mac_short != "" and found_device_name != 'unknown':
+                                #print("util: arp: mac in line: " + line)
+                                #item = {'ip':ip_address,'mac':mac_address,'name':name, 'mac_short':mac_address.replace(":", "")}
+                                #return str(line)
                             
-                            if self.DEBUG:
-                                print("quick scan: arp -a: possible_name: " + str(possible_name))
-                            
-                            if self.ignore_candle_controllers and ip_address in self.candle_controllers_ip_list:
-                                if self.DEBUG:
-                                    print("quick scan: arp -a: ignoring a Candle controller")
-                                continue
-                            else:
-                                if self.DEBUG:
-                                    print("quick scan: arp -a: adding device to found devices list\n")
-                                device_dict[_id] = {'ip':ip_address,'mac_address':mac_address,'name':possible_name,'arpa_time':int(time.time()),'lastseen':None}
-                            
-                            
-                            
-                        except Exception as ex:
-                            if self.DEBUG:
-                                print("Error: quick scan: arp -a: could not get name from arp -a line: " + str(ex))
-                        
-                        
-                        #if mac_short != "" and found_device_name != 'unknown':
-                            #print("util: arp: mac in line: " + line)
-                            #item = {'ip':ip_address,'mac':mac_address,'name':name, 'mac_short':mac_address.replace(":", "")}
-                            #return str(line)
-                            
-                                                    #else:
-                        #    if self.DEBUG:
-                        #        print("Skipping an arp -a result because of missing mac or name")
-                            #print("device_dict = " + str(device_dict))
+                                                        #else:
+                            #    if self.DEBUG:
+                            #        print("Skipping an arp -a result because of missing mac or name")
+                                #print("device_dict = " + str(device_dict))
                 #return str(result.stdout)
 
             except Exception as ex:
@@ -1164,40 +1212,64 @@ class PresenceAdapter(Adapter):
                         if self.DEBUG:
                             print("stale, delay or reachable in line:  "+ str(line))
                         try:
-                            neighbor_mac = extract_mac(line)
-                            neighbor_ip = line.split(" ", 1)[0]
+                            mac_address = extract_mac(line)
+                            ip_address = line.split(" ", 1)[0]
                             #possible_name = "unknown"
                 
-                            if neighbor_ip == self.own_ip:
+                            if ip_address == self.own_ip:
                                 if self.DEBUG:
                                     print("ip neighbor was own IP address, skipping")
                                 continue
                 
                             if self.DEBUG:
-                                print("neighbor mac: " + str(neighbor_mac) + ", and ip: " + str(neighbor_ip))
-                            if valid_mac(neighbor_mac) and valid_ip(neighbor_ip):
+                                print("neighbor mac: " + str(mac_address) + ", and ip: " + str(ip_address))
+                            if valid_mac(mac_address) and valid_ip(ip_address):
                     
-                                neighbor_mac_short = mac_short = mac_to_hash(mac_address) #str(neighbor_mac.replace(":", ""))
-                                neighbor_id = 'presence-{}'.format(neighbor_mac_short)
+                                mac_short = mac_to_hash(mac_address) #str(mac_address.replace(":", ""))
+                                _id = 'presence-{}'.format(mac_short)
                                 if self.DEBUG:
-                                    print("- valid mac. Proposed neighbour id: " + str(neighbor_id))
-                                if neighbor_id not in self.previously_found and neighbor_id not in device_dict:
-                                    if self.DEBUG:
-                                        print("ip neighbour scan found a previously undetected device")
-                                        
-                                    possible_name = self.get_optimal_name(neighbor_ip, 'unnamed', neighbor_mac)
+                                    print("- valid mac. Proposed neighbour id: " + str(_id))
                                 
-                                    if self.ignore_candle_controllers and ip_address in self.candle_controllers_ip_list:
+                                
+                                if _id in device_dict:
+                                    if self.DEBUG:
+                                        print("neighbour id already in device_dict")
+                                    
+                                else:
+                                    # maybe the device is already known
+                                    if _id in self.previously_found:
+                                        if 'name' in self.previously_found[_id]:
+                                            #found_device_name = self.previously_found[_id]['name']
+                                            self.previously_found[_id]['ip'] = ip_address
+                                            if self.DEBUG:
+                                                print("quick scan: neighbour: id was already in previously_found. Name: " + str(self.previously_found[_id]['name']))
+                                            
+                                        
+                                        else:
+                                            if self.DEBUG:
+                                                print("quick scan: neighbour: Error, no name attribute in previously_found?")
+                                            
                                         if self.DEBUG:
-                                            print("quick scan is ignoring a Candle controller")
+                                            print("")
                                         continue
+                                
+                                    if not _id in device_dict:
+                                        if self.DEBUG:
+                                            print("ip neighbour scan found a previously undetected device")
+                                        
+                                        possible_name = self.get_optimal_name(ip_address, 'unnamed', mac_address)
+                                
+                                        if self.ignore_candle_controllers and ip_address in self.candle_controllers_ip_list:
+                                            if self.DEBUG:
+                                                print("quick scan is ignoring a Candle controller")
+                                            continue
+                                        else:
+                                            if self.DEBUG:
+                                                print("quick scan: ip neighbour: adding device to found devices list\n")
+                                            device_dict[_id] = {'ip':ip_address,'mac_address':mac_address,'name':possible_name,'first_seen':int(time.time()),'lastseen':None}
                                     else:
                                         if self.DEBUG:
-                                            print("quick scan: ip neighbour: adding device to found devices list\n")
-                                        device_dict[neighbor_id] = {'ip':neighbor_ip,'mac_address':neighbor_mac,'name':possible_name,'arpa_time':int(time.time()),'lastseen':None}
-                                else:
-                                    if self.DEBUG:
-                                        print("neighbor ID existed already in detected devices list")
+                                            print("neighbor ID existed already in detected devices list")
                         except Exception as ex:
                             if self.DEBUG:
                                 print("error getting mac from ip neighbour line: " + str(ex))
@@ -1217,7 +1289,9 @@ class PresenceAdapter(Adapter):
                     print("")
                     print("quick scan results: " + str(device_dict))
                     print("quick scan result length: " + str(len(device_dict.keys())))
+                    print("candle_controllers_ip_list: " + str(self.candle_controllers_ip_list))
                     print("")
+                
                 
                 for key in device_dict:
                     if self.DEBUG:
@@ -1373,6 +1447,14 @@ class PresenceAdapter(Adapter):
             if self.DEBUG: 
                 print("--possible name (may still be duplicate):  " + str(possible_name))
         
+        
+        
+            # an additional check to see if this is a Candle controller, and to make sure it's in the list of Candle controllers
+            if "Candle" in possible_name:
+                if self.DEBUG: 
+                    print("get_optimal_name: this is a candle controller")
+                self.candle_controllers_ip_list.add(ip_address)
+        
             # Create or update items in the previously_found dictionary
         
             try:
@@ -1467,7 +1549,7 @@ class PresenceAdapter(Adapter):
         try:
             if device_id.startswith('presence'):
                 if self.DEBUG:
-                    print("handle_device_saved. device_id = " + str(device_id) + ", device = " + str(device))
+                    print("\nhandle_device_saved. device_id = " + str(device_id) + ", device = " + str(device))
 
                 if device_id not in self.saved_devices:
                     #print("Adding to saved_devices list: " + str(device_id.split("-")[1]))
@@ -1485,6 +1567,8 @@ class PresenceAdapter(Adapter):
                     #self.saved_devices.append({device_id:{'name':original_title}})
                     self.saved_devices.append(device_id)
                     
+                    """
+                    
                     data_collection = True
                     try:
                         if 'data-collection' in device['properties']:
@@ -1494,20 +1578,25 @@ class PresenceAdapter(Adapter):
                 
                     #print("Data_collection value is now: " + str(data_collection))
                     
-                    try:
-                        #pass
-                        if device_id not in self.previously_found:
+                    if 'details' in device['properties']:
+                    
+                        try:
+                            #pass
+                            if device_id not in self.previously_found:
+                                if self.DEBUG:
+                                    print("Populating previously_found from handle_device_saved.")
+                                self.previously_found[device_id] = {}
+                                self.previously_found[device_id]['ip'] = str(device['properties']['details']['value']) #str(device['ip_address'])
+                                self.previously_found[device_id]['name'] = str(device['title'])
+                                self.previously_found[device_id]['lastseen'] = None   
+                                self.previously_found[device_id]['first_seen'] = int(time.time())
+                                #self.previously_found[device_id]['quick_time'] = int(time.time())
+                                self.previously_found[device_id]['data-collection'] = bool(data_collection)
+                        except Exception as ex:
                             if self.DEBUG:
-                                print("Populating previously_found from handle_device_saved")
-                            self.previously_found[device_id] = {}
-                            self.previously_found[device_id]['name'] = str(device['title'])
-                            self.previously_found[device_id]['lastseen'] = None   
-                            self.previously_found[device_id]['arpa_time'] = int(time.time())
-                            #self.previously_found[device_id]['quick_time'] = int(time.time())
-                            self.previously_found[device_id]['data-collection'] = bool(data_collection)
-                    except Exception as ex:
-                        if self.DEBUG:
-                            print("Error adding to found devices list: " + str(ex))
+                                print("Error adding to found devices list: " + str(ex))
+                       
+                    """
                         
         except Exception as ex:
             if self.DEBUG:
@@ -1536,7 +1625,7 @@ class PresenceAdapter(Adapter):
                 print("Removing presence detection thing failed: " + str(ex))
         #del self.devices[device_id]
         self.should_save = True # saving changes to the json persistence file
-
+        return True
         
         
         
