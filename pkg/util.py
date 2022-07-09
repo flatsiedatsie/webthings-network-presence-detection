@@ -36,7 +36,7 @@ def valid_mac(mac):
         all(0 <= int(num, 16) < 256 for num in mac.rstrip().split(':')) and \
         not all(int(num, 16) == 255 for num in mac.rstrip().split(':'))
 
-def mac_to_hash(mac):
+def mac_to_id(mac):
     #hash_string = str(hash(mac))
     #if hash_string[:1] == '-':
     #    hash_string = hash_string[1:]
@@ -46,7 +46,8 @@ def mac_to_hash(mac):
     hash_string = hash_object.hexdigest()
     hash_string = hash_string[:12]
     #print("hashed mac: " + str(hash_string))
-    return hash_string
+    
+    return 'presence-{}'.format(hash_string)
 
 
 
