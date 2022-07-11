@@ -39,28 +39,29 @@ class PresenceDevice(Device):
         
         self.last_add_mute_time = 0
         self.mute_until = 0
-
-        self.properties['details'] = PresenceProperty(
-            self,
-            'details',
-            {
-                'title': 'IP address',
-                'type': 'string',
-                'readOnly': True,
-            },
-            str(details))
+        
+        if details != None:
+            self.properties['details'] = PresenceProperty(
+                self,
+                'details',
+                {
+                    'title': 'IP address',
+                    'type': 'string',
+                    'readOnly': True,
+                },
+                str(details))
             
-        if self.adapter.DEBUG:
-            print("+ Adding new device: " + str(name))
+            if self.adapter.DEBUG:
+                print("+ Adding new device: " + str(name))
             
-        action_meta = { "toggle": 
-            {
-            "@type": "ToggleAction",
-            "title": "Toggle",
-            "description": "Toggggle"
+            action_meta = { "toggle": 
+                {
+                "@type": "ToggleAction",
+                "title": "Toggle",
+                "description": "Toggggle"
+                }
             }
-        }
-        self.add_action("Data mute", action_meta)
+            self.add_action("Data mute", action_meta)
 
         
 

@@ -1757,7 +1757,7 @@ class PresenceAdapter(Adapter):
             
                 if _id in self.previously_found.keys():
                     if self.DEBUG:
-                        print("hurray, device was found again")
+                        print("hurray, device was found again, not a zombie")
                 else:
                     if self.DEBUG:
                         print("Error, zombie detected. This device was not found in the initial scan, should create it and set it to missing")
@@ -1766,7 +1766,7 @@ class PresenceAdapter(Adapter):
                     name = str(self.saved_devices_from_controller[_id]['title'])
                     if self.DEBUG:
                         print("name in saved_devices_from_controller: " + str(name))
-                    device = PresenceDevice(self, _id, name, "unknown")
+                    device = PresenceDevice(self, _id, name, None)
                     self.handle_device_added(device)
                 
                     # Set thing to connected state
