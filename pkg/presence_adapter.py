@@ -1,5 +1,8 @@
 """Presence Detection adapter for Candle Controller / WebThings Gateway."""
 
+# nomenclature in this code:
+# a device is a device that has been found by a scan
+# a thing is a device that has been accepted as a thing by the user
 
 
 import os
@@ -92,6 +95,8 @@ class PresenceAdapter(Adapter):
         
         self.should_save = False
         
+        
+        self.saved_devices_from_controller = {} # holds devices that the controller says it has already accepted
         self.previous_data = {} # will hold data loaded from persistence file
         self.previously_found = {} # will hold the previously found devices recovered from persistence data
         
@@ -164,6 +169,8 @@ class PresenceAdapter(Adapter):
         time.sleep(2) # wait a bit before doing the quick scan. The gateway will pre-populate based on the 'handle-device-saved' method.
 
         self.quick_scan() # get initial list of devices
+
+        self.handle_unfound_accepted_things() # some things might not be found by the scan, but be accepted in the UI. They should be set to disconnected.
 
         if self.DEBUG:
             print("Starting the clock thread")
@@ -375,6 +382,7 @@ class PresenceAdapter(Adapter):
                             if self.ignore_candle_controllers and self.previously_found[_id]['candle'] == True:
                                 if self.DEBUG:
                                     print("clock: ignoring a Candle controller")
+                                    continue
                 
                             else:
                                 if self.DEBUG:
@@ -415,6 +423,11 @@ class PresenceAdapter(Adapter):
                                 print("Clock: minutes ago issue: " + str(ex))
                         
                         
+                        if _id not in self.devices:
+                            if self.DEBUG:
+                                print("Error. clock: _id was in previously found but not in self.devices (and not an ignored Candle controller either): " + str(_id))
+                            continue
+                            
                         try:
                             #if should_update_last_seen:
                             if 'minutes_ago' not in self.devices[_id].properties:
@@ -463,7 +476,7 @@ class PresenceAdapter(Adapter):
                                 self.devices[_id].properties["recently1"].update(recently)
                         except Exception as ex:
                             if self.DEBUG:
-                                print("Clock: Could not add recently spotted property" + str(ex))
+                                print("Clock: Could not add recently spotted property: " + str(ex))
 
 
 
@@ -1692,6 +1705,7 @@ class PresenceAdapter(Adapter):
                     
                     #self.accepted_as_things.append({device_id:{'name':original_title}})
                     self.accepted_as_things.append(device_id)
+                    self.saved_devices_from_controller[device_id] = device
                     
                     """
                     
@@ -1729,8 +1743,43 @@ class PresenceAdapter(Adapter):
                 print("Error dealing with existing saved devices: " + str(ex))
 
 
-
-
+    # ZOMBIES
+    # in edge cases on a reboot a thing might have been accepted, but not exist in the found_devices data (if it has been cleared after an update) and not found in the scan (because it's turned off, for example)
+    def handle_unfound_accepted_things(self):
+        if self.DEBUG:
+            print("in handle_unfound_accepted_things")
+            
+        for _id in self.saved_devices_from_controller.keys():
+            try:
+                if self.DEBUG:
+                    print("\nthing_id: " + str(_id))
+                    print("thing: " + str(self.saved_devices_from_controller[_id]))
+            
+                if _id in self.previously_found.keys():
+                    if self.DEBUG:
+                        print("hurray, device was found again")
+                else:
+                    if self.DEBUG:
+                        print("Error, zombie detected. This device was not found in the initial scan, should create it and set it to missing")
+                    #self._add_device(_id, self.previously_found[_id]['name'], self.previously_found[_id]['ip'])
+                
+                    name = str(self.saved_devices_from_controller[_id]['title'])
+                    if self.DEBUG:
+                        print("name in saved_devices_from_controller: " + str(name))
+                    device = PresenceDevice(self, _id, name, "unknown")
+                    self.handle_device_added(device)
+                
+                    # Set thing to connected state
+                    try:
+                        self.devices[_id].connected = False # not really necessary?
+                        self.devices[_id].connected_notify(False)
+                    except Exception as ex:
+                        print("Error setting unfound thing connected state: " + str(ex))
+            
+            except Exception as ex:
+                if self.DEBUG:
+                    print("Error creating zombie thing: " + str(ex))
+                    
 
     def remove_thing(self, device_id):
         """User removed a thing from the interface."""
