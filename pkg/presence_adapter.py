@@ -51,7 +51,7 @@ class PresenceAdapter(Adapter):
         #print("Adapter ID = " + self.get_id())
         
         self.mayor_version = 2
-        #self.meso_version = 0
+        self.meso_version = 0
         
         self.DEBUG = False
         self.ready = False
@@ -107,7 +107,7 @@ class PresenceAdapter(Adapter):
                     self.previous_data = json.load(file_object)
                     if 'mayor_version' in self.previous_data:
                         #if self.DEBUG:
-                        print("Persistent data was loaded succesfully") # debug will never be true here unless set in the code above
+                        #print("Persistent data was loaded succesfully") # debug will never be true here unless set in the code above
                         if 'devices' in self.previous_data:
                             self.previously_found = self.previous_data['devices']
                         else:
@@ -1906,7 +1906,10 @@ class PresenceAdapter(Adapter):
             #with open(self.persistence_file_path, 'w') as fp:
                 #json.dump(self.previously_found, fp)
             
-            data_to_write = {'devices':self.previously_found,'mayor_version':self.mayor_version}
+            data_to_write = {'devices':self.previously_found,
+                            'mayor_version':self.mayor_version,
+                            'meso_version':self.meso_version
+                    }
                 
             j = json.dumps(data_to_write, indent=4) # Pretty printing to the file
             f = open(self.persistence_file_path, 'w')
