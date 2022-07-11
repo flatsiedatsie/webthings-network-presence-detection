@@ -1774,7 +1774,8 @@ class PresenceAdapter(Adapter):
                         self.devices[_id].connected = False # not really necessary?
                         self.devices[_id].connected_notify(False)
                     except Exception as ex:
-                        print("Error setting unfound thing connected state: " + str(ex))
+                        if self.DEBUG:
+                            print("Error setting unfound thing connected state: " + str(ex))
             
             except Exception as ex:
                 if self.DEBUG:
