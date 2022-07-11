@@ -47,6 +47,9 @@ class PresenceAdapter(Adapter):
                          verbose=verbose)
         #print("Adapter ID = " + self.get_id())
         
+        self.mayor_version = 2
+        #self.meso_version = 0
+        
         self.DEBUG = False
         self.ready = False
         #print("self.user_profile['baseDir'] = " + self.user_profile['baseDir'])
@@ -73,7 +76,6 @@ class PresenceAdapter(Adapter):
         self.raw_avahi_scan_result = ""
         self.avahi_lookup_table = {}
         self.candle_controllers_ip_list = set()
-        self.candle_controllers_ip_list = set()
         self.ignore_candle_controllers = True
         
         self.nbtscan_results = ""
@@ -86,16 +88,28 @@ class PresenceAdapter(Adapter):
         self.persistence_file_path = os.path.join(self.user_profile['dataDir'], self.addon_name,'persistence.json')
 
         if self.DEBUG:
-            print("self.persistence_file_path = " + str(self.persistence_file_path))
+            print("self.persistence_file_path = " + str(self.persistence_file_path)) # debug will never be true here unless set in the code above
         
         self.should_save = False
         
+        self.previous_data = {} # will hold data loaded from persistence file
+        self.previously_found = {} # will hold the previously found devices recovered from persistence data
         
         try:
             with open(self.persistence_file_path) as file_object:
                 #print("Loading json..")
                 try:
-                    self.previously_found = json.load(file_object)
+                    self.previous_data = json.load(file_object)
+                    if 'mayor_version' in self.previous_data:
+                        if self.DEBUG:
+                            print("Persistent data was loaded succesfully") # debug will never be true here unless set in the code above
+                        if 'devices' in self.previous_data:
+                            self.previously_found = self.previously_data['devices']
+                        else:
+                            self.previously_found = self.previous_data
+                    else:
+                        print("loaded json was from version 1.0, clearing incompatible persistent data")
+                        
                 except:
                     #print("Empty json file")
                     self.previously_found = {}
@@ -112,14 +126,14 @@ class PresenceAdapter(Adapter):
         
         self.previous_found_devices_length = len(self.previously_found)
 
-        # Reset all the lastseen data from the persistence file, since it could be out of date.
+        # Reset all the last_seen data from the persistence file, since it could be out of date.
         for _id in self.previously_found:
             try:
-                if 'lastseen' in self.previously_found[_id]:
-                    self.previously_found[_id]['lastseen'] = None
+                if 'last_seen' in self.previously_found[_id]:
+                    self.previously_found[_id]['last_seen'] = None
                 self.not_seen_since[_id] = None
             except Exception as ex:
-                print("Error setting lastseen of previously_found devices from persistence to None: " + str(ex))
+                print("Error setting last_seen of previously_found devices from persistence to None: " + str(ex))
         
         time.sleep(.3) # avoid swamping the sqlite database
         
@@ -354,7 +368,7 @@ class PresenceAdapter(Adapter):
                             if self.DEBUG:
                                 print("clock: adding thing")
                             """
-                                
+                            
                             if self.ignore_candle_controllers and self.previously_found[_id]['candle'] == True:
                                 if self.DEBUG:
                                     print("clock: ignoring a Candle controller")
@@ -372,10 +386,10 @@ class PresenceAdapter(Adapter):
                         #
 
                         try:
-                            if self.previously_found[_id]['lastseen'] != 0 and self.previously_found[_id]['lastseen'] != None:
+                            if self.previously_found[_id]['last_seen'] != 0 and self.previously_found[_id]['last_seen'] != None:
                                 if self.DEBUG:
                                     print("-adding a minute to minutes_ago variable")
-                                minutes_ago = int( (time.time() - self.previously_found[_id]['lastseen']) / 60 )
+                                minutes_ago = int( (time.time() - self.previously_found[_id]['last_seen']) / 60 )
                             else:
                                 minutes_ago = None
                                 if self.DEBUG:
@@ -537,7 +551,7 @@ class PresenceAdapter(Adapter):
                                 if self.DEBUG:
                                     print("clock: skipping pinging of muted device " + str(self.previously_found[_id]['name']))
                                 
-                                self.previously_found[_id]['lastseen'] = None
+                                self.previously_found[_id]['last_seen'] = None
                                 self.devices[_id].properties["recently1"].update(None)
                                 should_ping = False
                         else:
@@ -558,9 +572,9 @@ class PresenceAdapter(Adapter):
                                     try:
                                         if 'mac_address' in self.previously_found[_id]:
                                             if not self.previously_found[_id]['ip'] in self.devices_excluding_arping and not self.previously_found[_id]['mac_address'] in self.devices_excluding_arping and self.arping(self.previously_found[_id]['ip'], 1) == 0:
-                                                self.previously_found[_id]['lastseen'] = int(time.time())
+                                                self.previously_found[_id]['last_seen'] = int(time.time())
                                                 if self.DEBUG:
-                                                    print("Clock: >> Arping found it. lastseen updated.")
+                                                    print("Clock: >> Arping found it. last_seen updated.")
                                                 succesfully_found += 1
                                                 self.not_seen_since[_id] = None
                                             else:
@@ -600,11 +614,11 @@ class PresenceAdapter(Adapter):
                                                 
                                     except Exception as ex:
                                         if self.DEBUG:
-                                            print("Error trying lastseen arping: " + str(ex))
+                                            print("Error trying last_seen arping: " + str(ex))
                                 else:
                                     if self.DEBUG:
                                         print(">> Ping found device")
-                                    self.previously_found[_id]['lastseen'] = int(time.time())
+                                    self.previously_found[_id]['last_seen'] = int(time.time())
                                     succesfully_found += 1
                                     self.not_seen_since[_id] = None
                             else:
@@ -820,12 +834,12 @@ class PresenceAdapter(Adapter):
                         
                         if _id in self.previously_found:
                             if self.DEBUG:
-                                print("Deep scan: updating ip and lastseen")
+                                print("Deep scan: updating ip and last_seen")
                             # update
                             #self.previously_found[_id]['first_seen'] = now # creation time
                             #self.previously_found[_id]['mac_address'] = mac_address
                      
-                            self.previously_found[_id]['lastseen'] = now    
+                            self.previously_found[_id]['last_seen'] = now    
                             #self.previously_found[_id]['name'] = str(possible_name) # The name may be better, or it may have changed.
                             self.previously_found[_id]['ip'] = ip_address
                         
@@ -1187,7 +1201,7 @@ class PresenceAdapter(Adapter):
                                 else:
                                     if self.DEBUG:
                                         print("quick scan: arp -a: adding device to found devices list\n")
-                                    device_dict[_id] = {'ip':ip_address,'mac_address':mac_address,'name':possible_name,'first_seen':int(time.time()),'lastseen':None}
+                                    device_dict[_id] = {'ip':ip_address,'mac_address':mac_address,'name':possible_name,'first_seen':int(time.time()),'last_seen':None}
                             
                             
                             
@@ -1285,7 +1299,7 @@ class PresenceAdapter(Adapter):
                             self.previously_found[_id] = {} # adding empty device to the previously found dictionary
                             self.previously_found[_id]['name'] = device_dict[_id]['name']
                             #self.previously_found[_id]['quick_time'] = int(time.time()) #device_dict[_id]['quick_time'] #timestamp of initiation
-                            self.previously_found[_id]['lastseen'] = None #device_dict[_id]['quick_time'] #timestamp of initiation
+                            self.previously_found[_id]['last_seen'] = None #device_dict[_id]['quick_time'] #timestamp of initiation
                             self.previously_found[_id]['ip'] = device_dict[_id]['ip']
                             self.previously_found[_id]['mac_address'] = device_dict[_id]['mac_address']
                             self.previously_found[_id]['data-collection'] = True
@@ -1360,6 +1374,9 @@ class PresenceAdapter(Adapter):
         if _id not in self.previously_found:
             if self.DEBUG:
                 print("\n\n! NEW !\n\nparse_found_device: _id NOT already in previously_found")
+                print("self.avahi_lookup_table: " + str(self.avahi_lookup_table))
+                print("self.candle_controllers_ip_list: " + str(self.candle_controllers_ip_list))
+                print("")
             
             
             try:
@@ -1546,6 +1563,9 @@ class PresenceAdapter(Adapter):
                         if self.DEBUG: 
                             print("not a candle device")
                 
+                    if ip_address in self.candle_controllers_ip_list:
+                        return
+                
                     if _id in self.previously_found:
                         if self.DEBUG: 
                             print("Error, _id was already in previously_found")
@@ -1561,7 +1581,7 @@ class PresenceAdapter(Adapter):
                         self.previously_found[_id]['mac_address'] = mac_address
                         self.previously_found[_id]['name'] = possible_name
                         self.previously_found[_id]['first_seen'] = int(time.time())
-                        self.previously_found[_id]['lastseen'] = None
+                        self.previously_found[_id]['last_seen'] = None
                         self.previously_found[_id]['data-collection'] = True
                         
                         new_device = True
@@ -1688,7 +1708,7 @@ class PresenceAdapter(Adapter):
                                 self.previously_found[device_id] = {}
                                 self.previously_found[device_id]['ip'] = str(device['properties']['details']['value']) #str(device['ip_address'])
                                 self.previously_found[device_id]['name'] = str(device['title'])
-                                self.previously_found[device_id]['lastseen'] = None   
+                                self.previously_found[device_id]['last_seen'] = None   
                                 self.previously_found[device_id]['first_seen'] = int(time.time())
                                 #self.previously_found[device_id]['quick_time'] = int(time.time())
                                 self.previously_found[device_id]['data-collection'] = bool(data_collection)
@@ -1829,6 +1849,8 @@ class PresenceAdapter(Adapter):
             #if self.previously_found:
             #with open(self.persistence_file_path, 'w') as fp:
                 #json.dump(self.previously_found, fp)
+                
+            data_to_write = {'devices':self.previously_found,'mayor_version':self.mayor_version}
                 
             j = json.dumps(self.previously_found, indent=4) # Pretty printing to the file
             f = open(self.persistence_file_path, 'w')
