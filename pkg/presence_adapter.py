@@ -81,7 +81,7 @@ class PresenceAdapter(Adapter):
         self.nbtscan_results = ""
         
         self.running = True
-        self.saved_devices = []
+        self.accepted_as_things = []
         self.not_seen_since = {} # used to determine if a device hasn't responded for a long time
 
         self.addon_path =  os.path.join(self.user_profile['addonsDir'], self.addon_name)
@@ -101,10 +101,10 @@ class PresenceAdapter(Adapter):
                 try:
                     self.previous_data = json.load(file_object)
                     if 'mayor_version' in self.previous_data:
-                        if self.DEBUG:
-                            print("Persistent data was loaded succesfully") # debug will never be true here unless set in the code above
+                        #if self.DEBUG:
+                        print("Persistent data was loaded succesfully") # debug will never be true here unless set in the code above
                         if 'devices' in self.previous_data:
-                            self.previously_found = self.previously_data['devices']
+                            self.previously_found = self.previous_data['devices']
                         else:
                             self.previously_found = self.previous_data
                     else:
@@ -138,6 +138,9 @@ class PresenceAdapter(Adapter):
         time.sleep(.3) # avoid swamping the sqlite database
         
         self.add_from_config() # Here we get data from the settings in the Gateway interface.
+
+        if self.DEBUG:
+            print("self.previously_found: " + str(self.previously_found ))
 
         if not self.DEBUG:
             time.sleep(5) # give it a few more seconds to make sure the network is up
@@ -305,7 +308,7 @@ class PresenceAdapter(Adapter):
                         if self.DEBUG:
                             print("enough time has passed since the last brute force scan.")
                         self.last_brute_force_scan_time = time.time()
-                        if succesfully_found != len(self.saved_devices): # Avoid doing a deep scan if all devices are present
+                        if succesfully_found != len(self.accepted_as_things): # Avoid doing a deep scan if all devices are present
                             if self.busy_doing_brute_force_scan == False:
                                 if self.DEBUG:
                                     print("Should brute force scan is now set to true.")
@@ -423,7 +426,7 @@ class PresenceAdapter(Adapter):
                                     print("Minutes_ago of " + str(self.previously_found[_id]['name']) + " is: " + str(minutes_ago))
                             else:
                                 if self.DEBUG:
-                                    print("eh? minutes ago fell through")
+                                    print("eh? minutes ago fell through. It is: " + str(minutes_ago))
                                     
                             if self.DEBUG:
                                 print("updating minutes ago")
@@ -496,13 +499,13 @@ class PresenceAdapter(Adapter):
                 
                 
                 if self.DEBUG:
-                    print("\n\nself.saved_devices: " + str(self.saved_devices))
+                    print("\n\nself.accepted_as_things: " + str(self.accepted_as_things))
                     
                 # Scan the devices the user cares about (once a minute)
-                for _id in self.saved_devices:
+                for _id in self.accepted_as_things:
                     if self.DEBUG:
                         print("_\n__\n___")
-                        print("clock: scanning every minute: _id in saved_devices: " + str(_id))
+                        print("clock: scanning every minute: _id in accepted_as_things: " + str(_id))
                     
                     if str(_id) not in self.previously_found:
                         if self.DEBUG:
@@ -633,7 +636,7 @@ class PresenceAdapter(Adapter):
                         
                     except Exception as ex:
                         if self.DEBUG:
-                            print("Error while scanning device from saved_devices list: " + str(ex))
+                            print("Error while scanning device from accepted_as_things list: " + str(ex))
                     
                     #self.DEBUG = False
                     
@@ -645,10 +648,10 @@ class PresenceAdapter(Adapter):
             if self.should_save: # This is the only time the json file is stored.    
                 self.save_to_json() # also sets should_save to false again
             
-            saved_devices_count = len(self.saved_devices)
+            accepted_as_things_count = len(self.accepted_as_things)
             scan_time_delta = time.time() - last_run
             if self.DEBUG:
-                print("pinging all " + str(saved_devices_count) + " devices took " + str(scan_time_delta) + " seconds.")
+                print("pinging all " + str(accepted_as_things_count) + " devices took " + str(scan_time_delta) + " seconds.")
                 
             if scan_time_delta < 55:
                 if self.DEBUG:
@@ -735,7 +738,7 @@ class PresenceAdapter(Adapter):
                 for _id in current__ids:
                     try:
                         if 'first_seen' in self.previously_found[_id]:
-                            if time.time() - self.previously_found[_id]['first_seen'] > 86400 and _id not in self.saved_devices:
+                            if time.time() - self.previously_found[_id]['first_seen'] > 86400 and _id not in self.accepted_as_things:
                                 if self.DEBUG:
                                     print("Removing devices from found devices list because it hasn't been spotted in a day, and it's not a device the user has imported.")
                                 del self.previously_found[_id]
@@ -935,7 +938,7 @@ class PresenceAdapter(Adapter):
                                 
                                         if ip_address not in self.candle_controllers_ip_list:
                                             if self.DEBUG:
-                                                print("-it's a candle controller. Adding IP to list.")
+                                                print("-avahi: IPv4;CandleMQTT spotted, it's a candle controller. Adding IP to list.")
                                             self.candle_controllers_ip_list.add(ip_address)
                                         
                                     
@@ -961,7 +964,7 @@ class PresenceAdapter(Adapter):
                                 
                                     #if ip_address not in self.avahi_network_devices:
                                     if self.DEBUG:
-                                        print("quick scan: avahi: adding to / updating in avahi_network_devices. IP: " + str(ip_address) + ", found_device_name: " + str(found_device_name))
+                                        print("quick scan: avahi: adding/updating to self.avahi_network_devices. IP: " + str(ip_address) + ", found_device_name: " + str(found_device_name))
                                     self.avahi_lookup_table[ip_address] = found_device_name
                                         
                                     
@@ -1373,7 +1376,7 @@ class PresenceAdapter(Adapter):
         
         if _id not in self.previously_found:
             if self.DEBUG:
-                print("\n\n! NEW !\n\nparse_found_device: _id NOT already in previously_found")
+                print("\n\n\n! NEW !\n\nparse_found_device: _id NOT already in previously_found: " + str(_id) + ", ip: " + str(ip_address))
                 print("self.avahi_lookup_table: " + str(self.avahi_lookup_table))
                 print("self.candle_controllers_ip_list: " + str(self.candle_controllers_ip_list))
                 print("")
@@ -1557,14 +1560,16 @@ class PresenceAdapter(Adapter):
                     # an additional check to see if this is a Candle controller, and to make sure it's in the list of Candle controllers
                     if "Candle" in possible_name:
                         if self.DEBUG: 
-                            print("parse_found_device: this is a candle controller")
+                            print("parse_found_device: this is a candle controller. ip: " + str(ip_address))
                         self.candle_controllers_ip_list.add(ip_address)
+                        if self.DEBUG:
+                            print("updated self.candle_controllers_ip_list: " + str(self.candle_controllers_ip_list))
                     else:
                         if self.DEBUG: 
                             print("not a candle device")
                 
-                    if ip_address in self.candle_controllers_ip_list:
-                        return
+                    #if ip_address in self.candle_controllers_ip_list:
+                    #    return
                 
                     if _id in self.previously_found:
                         if self.DEBUG: 
@@ -1587,7 +1592,8 @@ class PresenceAdapter(Adapter):
                         new_device = True
                         # TODO: self.call scan here on the ip address? So that the last_seen can also be set?
                 
-                
+                        if self.DEBUG:
+                            print("initial data for new found device:" + str(self.previously_found[_id]))
                 
                 except Exception as ex:
                     if self.DEBUG:
@@ -1608,11 +1614,11 @@ class PresenceAdapter(Adapter):
             if self.DEBUG:
                 print("UPDATING")
                 print("- name in previously found: " + str(self.previously_found[_id]['name']))
-                print("- updating ip")
+                print("- adding/updating ip")
             self.previously_found[_id]['ip'] = ip_address
         
             if self.DEBUG:
-                print("- updating candle device boolean")
+                print("- adding/updating candle device boolean")
             if ip_address in self.candle_controllers_ip_list:
                 if self.DEBUG:
                     print("-- candle device (via candle_controllers_ip_list)")
@@ -1628,8 +1634,8 @@ class PresenceAdapter(Adapter):
                 self.previously_found[_id]['candle'] = False
         
             if self.DEBUG:
-                print("- updating thing boolean")
-            if _id in self.saved_devices:
+                print("- adding/updating thing boolean")
+            if _id in self.accepted_as_things:
                 if self.DEBUG:
                     print("-- accepted as a thing")
                 self.previously_found[_id]['thing'] = True
@@ -1671,8 +1677,8 @@ class PresenceAdapter(Adapter):
                 if self.DEBUG:
                     print("\nhandle_device_saved. device_id = " + str(device_id) + ", device = " + str(device))
 
-                if device_id not in self.saved_devices:
-                    #print("Adding to saved_devices list: " + str(device_id.split("-")[1]))
+                if device_id not in self.accepted_as_things:
+                    #print("Adding to accepted_as_things list: " + str(device_id.split("-")[1]))
                     if self.DEBUG:
                         print("Added " + str(device['title']) + " to saved devices list")
                     
@@ -1684,8 +1690,8 @@ class PresenceAdapter(Adapter):
                         if self.DEBUG:
                             print("Error getting original_title from data provided by the controller: " + str(ex))
                     
-                    #self.saved_devices.append({device_id:{'name':original_title}})
-                    self.saved_devices.append(device_id)
+                    #self.accepted_as_things.append({device_id:{'name':original_title}})
+                    self.accepted_as_things.append(device_id)
                     
                     """
                     
@@ -1849,10 +1855,10 @@ class PresenceAdapter(Adapter):
             #if self.previously_found:
             #with open(self.persistence_file_path, 'w') as fp:
                 #json.dump(self.previously_found, fp)
-                
+            
             data_to_write = {'devices':self.previously_found,'mayor_version':self.mayor_version}
                 
-            j = json.dumps(self.previously_found, indent=4) # Pretty printing to the file
+            j = json.dumps(data_to_write, indent=4) # Pretty printing to the file
             f = open(self.persistence_file_path, 'w')
             print(j, file=f)
             f.close()
