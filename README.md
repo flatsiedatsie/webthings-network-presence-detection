@@ -2,7 +2,9 @@
 
 Using this add-on, devices on your local network can be added as a 'thing' in the Candle controller. Automations can then respond to their presence. For example, turn on the lights at night when your mobile phone connects to the wireless network. Or turn of the heater when none of your phones or laptops are on the network.
 
-![A screenshot of a presence detection thing2](https://raw.githubusercontent.com/flatsiedatsie/webthings-network-presence-detection/master/presence-detection-screenshot.png)
+![A screenshot of the user interface](https://raw.githubusercontent.com/flatsiedatsie/webthings-network-presence-detection/master/screenshot.jpg)
+
+![A screenshot of a presence detection thing2](https://raw.githubusercontent.com/flatsiedatsie/webthings-network-presence-detection/master/screenshot.png)
 
 ## Features
 - You can change how many minutes a device must 'disappear' from the network before it is marked as being away. The add-on scans your selected things continously. When you press the (+) button on the things page, and also once every hour, it does a deep scan to find new devices on your network.
