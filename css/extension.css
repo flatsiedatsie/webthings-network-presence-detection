@@ -1,0 +1,528 @@
+
+
+#extension-network-presence-detection-adapter-view {
+  	height: 100%; /*calc(100% - 7.6rem);*/
+  	box-sizing: border-box;
+	overflow: auto;
+	/*position: absolute;
+	top: 7.6rem;*/
+	left: 0;
+	/*padding: 2rem;*/
+    padding: 2rem;
+}
+
+
+#extension-network-presence-content {
+	/*display:flex;
+	flex-direction: column;
+	overflow: auto;*/
+  	/*position: relative;*/
+  	text-align: left;
+  	font-size: 1.6rem;
+  	color: #fff;
+	height:auto;
+    max-width:130rem;
+    margin:0 auto;
+}
+
+
+
+/*  TITLE  */
+
+#extension-network-presence-icon{
+  display: inline-block;
+  width: 3rem;
+  height: 2rem;
+  background-image: url('../images/menu-icon.svg');
+  background-size: contain;
+  background-size: 2rem;
+  background-repeat: no-repeat;
+  background-position: 0;
+}
+
+#extension-network-presence-title{
+	text-align:left;
+	font-family: 'Open Sans', sans-serif;
+	font-weight: normal;
+	font-size:1.8rem;
+    margin: 0 auto;
+    display: block;
+    padding: 1rem;
+    padding-left: 3.8rem;
+    font-size: 1.8rem;
+    background-size: 2.8rem;
+    background-repeat: no-repeat;
+    background-position: 0;
+    background-image: url('../images/menu-icon.svg');
+	width:17rem;
+	margin:0 auto;
+}
+
+
+/*  PAGES  */
+
+#extension-network-presence-tabs-container{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    margin: 0 6rem;
+}
+
+#extension-network-presence-tabs-container > div{
+    box-sizing:border-box;
+    /*background-color:rgba(255,255,255,.1);
+    margin: 2rem;*/
+    padding-top:2rem;
+}
+
+#extension-network-presence-overview-page{
+    width:100%;
+    max-width:100%;
+}
+
+
+#extension-network-presence-overview-list{
+    width: 100%;
+	max-width:100rem;
+    display:grid;
+    justify-content:center;
+    margin:2rem auto;
+    /*
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 24rem);
+    grid-gap: 2rem;
+    */
+}
+
+#extension-network-presence-overview-list > .extension-network-presence-item{
+    width: 100%;
+    min-width:15rem;
+    max-width:80rem;
+    /*
+    margin:2rem;
+    flex-grow: 1;
+    flex-shrink: 1;
+    */
+    position:relative;
+    margin-bottom:1rem;
+}
+
+
+
+
+
+/*  DELETE  */
+
+
+.extension-network-presence-item-deleted{
+    opacity:.5;
+}
+
+.extension-network-presence-item-delete-button{
+	background: url(/images/delete-button.png);
+    background-size: 3.6rem;
+    width: 3.6rem;
+    height: 3.6rem;
+    padding: 0;
+    margin: 0;
+    border-radius: 50%;
+    border: 1px solid #979797;
+    cursor: pointer;
+	display:inline-block;
+	opacity:.5;
+}
+
+.extension-network-presence-item-delete-button:hover{
+	opacity:1;
+	box-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+}
+
+
+
+#extension-network-presence-detection-adapter-view{
+	overflow:auto;
+	max-height:100vh;
+}
+
+
+
+
+#main-menu #extension-network-presence-detection-adapter-menu-item{
+  	background-image: url('../images/menu-icon.svg');
+}
+
+
+#extension-network-presence-content img{
+	max-width:100%;
+}
+
+
+
+
+
+/*  item  */
+
+
+.extension-network-presence-list-item{
+	margin:2rem 0;
+	position:relative;
+	overflow:hidden;
+}
+
+.extension-network-presence-list-item-details,
+.extension-network-presence-list-item{
+	width:100%;
+	background-color:rgba(0,0,0,.1);
+	border-radius:1rem;
+	padding:1rem;
+	box-sizing:border-box;
+}
+
+.extension-network-presence-list-item h3{
+	margin-bottom:.5rem;
+	font-size:2.5rem;
+}
+.extension-network-presence-list-item-local-url{
+	margin-bottom:2rem;
+	display:block;
+}
+
+.extension-network-presence-list-item ul:not(.extension-network-presence-list-item-links){
+	margin-left:0;
+	padding-left:0;
+}
+.extension-network-presence-list-item ul li:not(.extension-network-presence-list-item-link){
+	list-style-type: none;
+	margin-left:0;
+}
+
+.extension-network-presence-list-item-ip4,
+.extension-network-presence-list-item-ip6{
+	display:block;
+}
+.extension-network-presence-list-item-ip4 + .extension-network-presence-list-item-ip6{
+	opacity:.6;
+}
+
+.extension-network-presence-list-item-admin-link{
+	display:inline;
+	font-size: 1.3rem;
+}
+.extension-network-presence-list-item-admin-link a:hover{
+	background-color:rgb(125 175 210);
+}
+
+.extension-network-presence-list-item-tags{
+	margin:2rem 0;
+	max-width:90%;
+}
+.extension-network-presence-list-item-tag{
+	display:inline-block;
+	margin:0 1rem 1rem 0;
+	background-color:rgba(255,255,255,.5);
+	color:black;
+	padding:.4rem .7rem;
+	border-radius:.5rem;
+}
+.extension-network-presence-list-item-tag-danger{
+	background-color:red;
+}
+
+.extension-network-presence-list-item-details{
+	margin-top:1rem;
+}
+
+.extension-network-presence-list-item-show-details-button + .extension-network-presence-list-item-details{
+	display:none;
+}
+
+#extension-network-presence-detection-adapter-view a{
+	color:white;
+	text-decoration:none;
+}
+
+a[class^='extension-network-presence-list-item-ip']{
+	margin-top:1rem;
+}
+
+.extension-network-presence-list-item-link{
+	display: inline-block;
+}
+    
+
+body:not(.kiosk) .extension-network-presence-list-item-link a,
+body:not(.kiosk) a[class^='extension-network-presence-list-item-ip']:hover{
+	text-decoration:underline;
+}
+
+.extension-network-presence-list-item-ports > li,
+.extension-network-presence-list-item-info > li{
+	display:flex;	
+}
+
+.extension-network-presence-list-item-links > li,
+.extension-network-presence-list-item-ports > li,
+.extension-network-presence-list-item-info > li{
+	padding:.7rem 0;
+	margin-bottom:.5rem;
+}
+
+.extension-network-presence-list-item-links > li:not(:last-of-type),
+.extension-network-presence-list-item-ports > li:not(:last-of-type),
+.extension-network-presence-list-item-info > li:not(:last-of-type){
+	border-bottom:1px solid rgba(255,255,255,.1);
+}
+
+.extension-network-presence-list-item-link a,
+.extension-network-presence-list-item-info-key,
+.extension-network-presence-list-item-info-value{
+	display:inline-block;
+	word-wrap:break-word;
+	word-break: break-all;
+	overflow-wrap: break-word;
+}
+
+.extension-network-presence-list-item-port-nr,
+.extension-network-presence-list-item-info-key{
+	min-width:12rem;
+	padding-right:2rem;
+	box-sizing:border-box;
+}
+
+.extension-network-presence-list-item-port-protocol,
+.extension-network-presence-list-item-info-value{
+	font-style:italic;
+}
+
+.extension-network-presence-list-item-show-details-button{
+	float:right;
+}
+
+.extension-network-presence-list-item-links{
+	padding-left:0;
+}
+.extension-network-presence-list-item-links > li{
+	margin-left:2rem;
+}
+
+.extension-network-presence-list-item-links:not(:empty):before{
+	content:'Links';
+	font-weight:bold;
+	display:block;
+	width:100%;
+	border-bottom:1px dotted white;
+	margin-top:3rem;
+	padding: 1rem 0;
+}
+
+.extension-network-presence-list-item-ports:not(:empty):before{
+	content:'Ports';
+	font-weight:bold;
+	display:block;
+	width:100%;
+	border-bottom:1px dotted white;
+	margin-top:3rem;
+	padding: 1rem 0;
+}
+
+.extension-network-presence-list-item-info:not(:empty):before{
+	content:'Info';
+	font-weight:bold;
+	display:block;
+	width:100%;
+	border-bottom:1px dotted white;
+	margin-top:3rem;
+	padding: 1rem 0;
+}
+
+
+
+
+/*  background icons  */
+
+.extension-network-presence-list-item-background-icon{
+    background-size: contain;
+    overflow: visible;
+    background-repeat: no-repeat;
+    background-position: top right;
+    opacity: .1;
+    position: absolute;
+    top: 1rem;
+    right: -4rem;
+    width: 20rem;
+    height: 20rem;
+    pointer-events: none;
+}
+.extension-network-presence-list-item-background-icon-candle{
+    background-image: url('../images/candle-icon.svg');
+}
+.extension-network-presence-list-item-background-icon-printer{
+    background-image: url('../images/printer-icon.svg');
+}
+.extension-network-presence-list-item-background-icon-laptop{
+    background-image: url('../images/laptop-icon.svg');
+}
+.extension-network-presence-list-item-background-icon-server{
+    background-image: url('../images/server-icon2.svg');
+}
+.extension-network-presence-list-item-background-icon-audio{
+    background-image: url('../images/audio-icon2.svg');
+}
+
+/*  spinner  */
+
+#extension-network-presence-busy-scanning{
+    text-align:center;
+    margin-top:4rem;
+}
+
+.extension-network-presence-spinner {
+  display: inline-block;
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin:0 auto;
+}
+.extension-network-presence-spinner div {
+  position: absolute;
+  top: 33px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.5);
+  animation-timing-function: cubic-bezier(0, 1, 1, 0);
+}
+.extension-network-presence-spinner div:nth-child(1) {
+  left: 8px;
+  animation: extension-network-presence-spinner1 0.6s infinite;
+}
+.extension-network-presence-spinner div:nth-child(2) {
+  left: 8px;
+  animation: extension-network-presence-spinner2 0.6s infinite;
+}
+.extension-network-presence-spinner div:nth-child(3) {
+  left: 32px;
+  animation: extension-network-presence-spinner2 0.6s infinite;
+}
+.extension-network-presence-spinner div:nth-child(4) {
+  left: 56px;
+  animation: extension-network-presence-spinner3 0.6s infinite;
+}
+@keyframes extension-network-presence-spinner1 {
+  0% {
+    transform: scale(0);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes extension-network-presence-spinner3 {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(0);
+  }
+}
+@keyframes extension-network-presence-spinner2 {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(24px, 0);
+  }
+}
+
+
+
+
+
+
+
+#extension-network-presence-debug-warning{
+    max-width:60rem;
+    margin:2rem auto;
+    padding:2rem;
+    background-color:red;
+    color:white;
+    border-radius:.5rem;
+}
+
+
+
+@media screen and (max-width: 640px) {
+    #extension-network-presence-text-input-container{
+        flex-wrap:wrap;
+    }
+    
+    #extension-network-presence-search-field{
+        margin-right:0;
+        margin-bottom:1rem;
+    }
+    
+    .extension-network-presence-item{
+        flex-direction:column;
+    }
+
+    .extension-network-presence-item-action-button{
+        margin-left:auto;
+    }
+}
+
+
+@media screen and (min-width: 810px) {
+    #extension-network-presence-stations-list{
+        display: grid;
+        grid-template-columns: repeat(auto-fill, 30rem);
+        grid-gap: 2rem;
+    }
+    #extension-network-presence-stations-list > .extension-network-presence-item{
+        margin-bottom:0;
+    }
+}
+
+@media screen and (min-width: 1025px) {
+	#extension-network-presence-view{
+        height:100vh; 
+        /*
+		left:9.6rem;
+		top: 0;
+		position:absolute;
+		width: calc(100% - 9.6rem);
+		padding-right:9.6rem;
+        */
+	}
+	
+	#extension-network-presence-content-container{
+		height:auto;
+		/*width: calc(100% - 3rem);*/
+	}
+    
+    #extension-network-presence-tabs-container > div{
+        padding:2rem;
+        box-sizing:border-box;
+    }
+    
+    
+	/*
+	.extension-network-presence-item{
+		width: calc(50% - 4rem);
+		margin-left: 2rem;
+		margin-right: 2rem;
+	}
+	*/
+	
+	#extension-network-presence-overview-list{
+	    grid-template-columns: 50% 50%;
+	    column-gap: 2rem;
+	}
+	
+	
+	.extension-network-presence-list-item{
+		padding:2rem;
+	}
+	
+}
+
+

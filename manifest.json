@@ -1,6 +1,17 @@
 {
-  "author": "Flatsiedatsie",
+  "type":"object",
+  "author": "CandleSmartHome.com",
   "description": "Check if devices are on your network",
+  "content_scripts": [
+    {
+      "css": [
+        "css/extension.css"
+      ],
+      "js": [
+        "js/extension.js"
+      ]
+    }
+  ],
   "gateway_specific_settings": {
     "webthings": {
       "exec": "python3 {path}/main.py",
@@ -59,5 +70,13 @@
     }
   },
   "short_name": "Network pres",
-  "version": "2.0.3"
+  "version": "2.1.0",
+  "web_accessible_resources": [
+    "css/*.css",
+    "images/*.svg",
+	"images/*.png",
+	"images/*.gif",
+    "js/*.js",
+    "views/*.html"
+  ]
 }

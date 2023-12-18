@@ -12,10 +12,18 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib'))
 import json
 import time
 import socket
+import chardet
 from datetime import datetime, timedelta
 import threading
 import subprocess
 from gateway_addon import Adapter, Database, Action
+
+try:
+    #from gateway_addon import APIHandler, APIResponse
+    from .presence_api_handler import * #InternetRadioAPIHandler
+    #print("VocoAPIHandler imported")
+except Exception as ex:
+    print("Unable to load APIHandler (which is used for UI extention): " + str(ex))
 
 from .presence_device import PresenceDevice
 from .util import *
@@ -143,6 +151,18 @@ class PresenceAdapter(Adapter):
         time.sleep(.3) # avoid swamping the sqlite database
         
         self.add_from_config() # Here we get data from the settings in the Gateway interface.
+
+        try:
+            if self.DEBUG:
+                print("starting api handler")
+            self.api_handler = NetworkPresenceAPIHandler(self, verbose=True)
+            #self.manager_proxy.add_api_handler(self.extension)
+            if self.DEBUG:
+                print("Extension API handler initiated")
+        except Exception as e:
+            if self.DEBUG:
+                print("Failed to start API handler (this only works on gateway version 0.10 or higher). Error: " + str(e))
+        
 
         if self.DEBUG:
             print("self.previously_found: " + str(self.previously_found ))
@@ -897,6 +917,57 @@ class PresenceAdapter(Adapter):
     #  IP neighbour is yet another list, this time from the OS
     
     
+    def get_avahi_lines(self):
+        if self.DEBUG:
+            print("in get_avahi_lines")
+        avahi_lines = []
+    
+        avahi_browse_command = ["avahi-browse","-p","-l","-a","-r","-k","-t"] # avahi-browse -p -l -a -r -k -t
+        #avahi_network_devices_ip_list = []
+
+        try:
+    
+            #avahi_scan_result = subprocess.run(avahi_browse_command, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
+            avahi_scan_result = subprocess.check_output(avahi_browse_command) #.decode()) # , universal_newlines=True, stdout=subprocess.PIPE
+            #print("avahi_scan_result: " + str(avahi_scan_result))
+            
+            avahi_encoding = 'latin1'
+            try:
+                avahi_encoding = chardet.detect(avahi_scan_result)['encoding']
+                if self.DEBUG:
+                    print("detected avahi output encoding: " + str(avahi_encoding))
+            except Exception as ex:
+                print("error getting avahi output encoding: " + str(ex))
+                
+            avahi_scan_result = avahi_scan_result.decode(avahi_encoding)
+            
+            
+            for line in avahi_scan_result.split('\n'):
+                # replace ascii codes in the string. E.g. /032 is a space
+                for x in range(127):
+                    anomaly = "\\" + str(x).zfill(3)
+                    #print("anomaly?: " + str(anomaly))
+                    if anomaly in line:
+                        #print("anomaly!")
+                        #print("-line before: " + str(line))
+                        line = line.replace(anomaly,chr(x))
+                        #print("-line after: " + str(line))
+                        
+                #line = line.replace('\\032',' ')
+                #line = line.replace('\\035','#')
+                #line = line.replace('\\064','-')
+                #if self.DEBUG:
+                #    print("avahi line: " + str(line))
+                avahi_lines.append(line)
+                
+        except Exception as ex:
+            if self.DEBUG:
+                print("Error in get_avahi_lines: " + str(ex))
+                
+        return avahi_lines
+        
+        
+    
     def quick_scan(self):
         if self.DEBUG:
             print("\n\nInitiating quick scan of network\n")
@@ -922,13 +993,11 @@ class PresenceAdapter(Adapter):
                 if self.DEBUG:
                     print("getting fresh avahi-browse data")
             
-                avahi_browse_command = ["avahi-browse","-p","-l","-a","-r","-k","-t"] # avahi-browse -p -l -a -r -k -t
-                #avahi_network_devices_ip_list = []
-
                 try:
-            
-                    avahi_scan_result = subprocess.run(avahi_browse_command, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
-                    for line in avahi_scan_result.stdout.split('\n'):
+             
+                    avahi_lines = self.get_avahi_lines()
+                    
+                    for line in avahi_lines:
                     
                         try:
                             ip_address_list = re.findall(r'(?:\d{1,3}\.)+(?:\d{1,3})', str(line))
@@ -970,8 +1039,8 @@ class PresenceAdapter(Adapter):
                                         found_device_name = line_parts[3]
                                 
                                     # Deal with possible escaped characters
-                                    found_device_name = found_device_name.replace('\\032',' ')
-                                    found_device_name = found_device_name.replace('\\064','-')
+                                    #found_device_name = found_device_name.replace('\\032',' ')
+                                    #found_device_name = found_device_name.replace('\\064','-')
                                     if '\\' in found_device_name:
                                         found_device_name = found_device_name.split('\\')[0]
                                 
