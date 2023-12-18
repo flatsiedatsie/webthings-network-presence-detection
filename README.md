@@ -17,7 +17,7 @@ A thing is linked to a mac-address of a device. Nowadays some devices, like ipho
 - Versions before 0.1.0 continously ran deep-scans. This was very processor intensive.
 - Since version 0.1.0 it only scans the devices you added to your things page. The add-on now has a much higher scan rate, and can respond to devices re-connecting to the network in just a few seconds.
 - Version 1.0 added some new privacy features
-- Version 2.0 is a big overhaul for Candle 2.0, which includes avahi scanning and can ignore Candle devices (enabled by default), and enabled additiona privacy protection (no longer uses mac address as part of devices IDs)
+- Version 2.0 is a big overhaul for Candle 2.0, which includes avahi scanning and can ignore Candle devices (enabled by default), and enabled additional privacy protection (no longer uses mac address as part of devices IDs)
 
 ## Thanks to
 Michael Stegeman (formerly of the Mozilla Foundation) helped a lot in getting this add-on to work optimally.
