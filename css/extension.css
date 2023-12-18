@@ -364,7 +364,7 @@ body:not(.kiosk) a[class^='extension-network-presence-list-item-ip']:hover{
     background-image: url('../images/laptop-icon.svg');
 }
 .extension-network-presence-list-item-background-icon-server{
-    background-image: url('../images/server-icon2.svg');
+    background-image: url('../images/server-icon.svg');
 }
 .extension-network-presence-list-item-background-icon-audio{
     background-image: url('../images/audio-icon2.svg');
