@@ -111,10 +111,10 @@ def get_vendor(mac, oui_file=OUI_FILE):
     mac_half_upper = mac_half.upper()
 
     
-    vendor_command = "grep -i " + str(mac_half_upper) + " " + str(os.path.join(__location__, oui_file)) + " | cut -d')' -f2 | tr -d '\t'"
-    result = subprocess.run(vendor_command, shell=True, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) #.decode())
-    vendor_alt = result.stdout.split('\n')[0]
-    print("VENDOR_ALT FROM GREP: " + str(vendor_alt))
+    #vendor_command = "grep -i " + str(mac_half_upper) + " " + str(os.path.join(__location__, oui_file)) + " | cut -d')' -f2 | tr -d '\t'"
+    #result = subprocess.run(vendor_command, shell=True, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) #.decode())
+    #vendor_alt = result.stdout.split('\n')[0]
+    #print("VENDOR_ALT FROM GREP: " + str(vendor_alt))
 
     with open(os.path.join(__location__, oui_file)) as file:
         #mac_half = mac_clean[0:6]
