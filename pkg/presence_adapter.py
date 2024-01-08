@@ -921,16 +921,10 @@ class PresenceAdapter(Adapter):
         if self.DEBUG:
             print("in get_avahi_lines")
         avahi_lines = []
-    
         avahi_browse_command = ["avahi-browse","-p","-l","-a","-r","-k","-t"] # avahi-browse -p -l -a -r -k -t
-        #avahi_network_devices_ip_list = []
-
+        
         try:
-    
-            #avahi_scan_result = subprocess.run(avahi_browse_command, universal_newlines=True, stdout=subprocess.PIPE) #.decode())
             avahi_scan_result = subprocess.check_output(avahi_browse_command) #.decode()) # , universal_newlines=True, stdout=subprocess.PIPE
-            #print("avahi_scan_result: " + str(avahi_scan_result))
-            
             avahi_encoding = 'latin1'
             try:
                 avahi_encoding = chardet.detect(avahi_scan_result)['encoding']
@@ -940,26 +934,14 @@ class PresenceAdapter(Adapter):
                 print("error getting avahi output encoding: " + str(ex))
                 
             avahi_scan_result = avahi_scan_result.decode(avahi_encoding)
-            
-            
             for line in avahi_scan_result.split('\n'):
                 # replace ascii codes in the string. E.g. /032 is a space
                 for x in range(127):
                     anomaly = "\\" + str(x).zfill(3)
-                    #print("anomaly?: " + str(anomaly))
                     if anomaly in line:
-                        #print("anomaly!")
-                        #print("-line before: " + str(line))
                         line = line.replace(anomaly,chr(x))
-                        #print("-line after: " + str(line))
-                        
-                #line = line.replace('\\032',' ')
-                #line = line.replace('\\035','#')
-                #line = line.replace('\\064','-')
-                #if self.DEBUG:
-                #    print("avahi line: " + str(line))
                 avahi_lines.append(line)
-                
+        
         except Exception as ex:
             if self.DEBUG:
                 print("Error in get_avahi_lines: " + str(ex))

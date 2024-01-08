@@ -87,6 +87,13 @@ __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 def get_vendor(mac, oui_file=OUI_FILE):
+    
+    
+    # TODO: this could be replaced with a shell call:
+    # #!/bin/bash
+    # OUI=$(ip addr list|grep -w 'link'|awk '{print $2}'|grep -P '^(?!00:00:00)'| grep -P '^(?!fe80)' | tr -d ':' | head -c 6)
+    #curl -sS "http://standards-oui.ieee.org/oui.txt" | grep -i "$OUI" | cut -d')' -f2 | tr -d '\t'
+    
     mac_clean = mac
     for separator in SEPARATORS:
         mac_clean = ''.join(mac_clean.split(separator))
@@ -100,9 +107,18 @@ def get_vendor(mac, oui_file=OUI_FILE):
     if mac_size > 12 or mac_size < 6:
         raise ValueError('Invalid MAC address.')
 
+    mac_half = mac_clean[0:6]
+    mac_half_upper = mac_half.upper()
+
+    
+    vendor_command = "grep -i " + str(mac_half_upper) + " " + str(os.path.join(__location__, oui_file)) + " | cut -d')' -f2 | tr -d '\t'"
+    result = subprocess.run(vendor_command, shell=True, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) #.decode())
+    vendor_alt = result.stdout.split('\n')[0]
+    print("VENDOR_ALT FROM GREP: " + str(vendor_alt))
+
     with open(os.path.join(__location__, oui_file)) as file:
-        mac_half = mac_clean[0:6]
-        mac_half_upper = mac_half.upper()
+        #mac_half = mac_clean[0:6]
+        #mac_half_upper = mac_half.upper()
         while True:
             line = file.readline()
             if line:

@@ -70,12 +70,13 @@
     }
   },
   "short_name": "Network pres",
-  "version": "2.1.2",
+  "version": "2.1.1",
   "web_accessible_resources": [
     "css/*.css",
     "images/*.svg",
 	"images/*.png",
 	"images/*.gif",
+	"audio/*.mp3",
     "js/*.js",
     "views/*.html"
   ]

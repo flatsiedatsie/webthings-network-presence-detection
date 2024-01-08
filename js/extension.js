@@ -64,14 +64,14 @@
 			const main_view = document.getElementById('extension-network-presence-detection-adapter-view');
 			
 			if(this.content == ''){
-				console.error("network presence: error, content was empty");
+				//console.error("network presence: error, content was empty");
 				return;
 			}
 			else if(main_view){
 				main_view.innerHTML = this.content;
 			}
 			else{
-				console.error("network presence: erorr, view element not found");
+				console.error("network presence: error, view element not found");
 				return
 			}
 			
@@ -86,6 +86,9 @@
             
 			document.getElementById('extension-network-presence-title').addEventListener('click', (event) => {
                 this.scan();
+				const music = new Audio('/extensions/network-presence-detection-adapter/audio/ping.mp3');
+				music.loop = false;
+				music.play();
 			});
             
             
