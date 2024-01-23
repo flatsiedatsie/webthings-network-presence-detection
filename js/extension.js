@@ -173,7 +173,7 @@
                     if(typeof body.debug != 'undefined'){
                         this.debug = body.debug;
                         if(this.debug){
-                            console.log("Network presence Init API result: ", body);
+                            console.log("Network presence: debug: init API result: ", body);
                             if(document.getElementById('extension-network-presence-debug-warning') != null){
                                 document.getElementById('extension-network-presence-debug-warning').style.display = 'block';
                             }

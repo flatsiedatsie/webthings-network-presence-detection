@@ -117,8 +117,10 @@ class PresenceAdapter(Adapter):
                         #if self.DEBUG:
                         #print("Persistent data was loaded succesfully") # debug will never be true here unless set in the code above
                         if 'devices' in self.previous_data:
+                            #pass
                             self.previously_found = self.previous_data['devices']
                         else:
+                            #pass
                             self.previously_found = self.previous_data
                     else:
                         print("loaded json was from version 1.0, clearing incompatible persistent data")
@@ -1418,7 +1420,7 @@ class PresenceAdapter(Adapter):
         
         new_device = False
         possible_name = found_device_name
-        
+        abort_adding = False
         
         _id = mac_to_id(mac_address) #mac_address.replace(":", "")
         
@@ -1440,7 +1442,7 @@ class PresenceAdapter(Adapter):
         
         if _id not in self.previously_found:
             if self.DEBUG:
-                print("\n\n\n! NEW !\n\nparse_found_device: _id NOT already in previously_found: " + str(_id) + ", ip: " + str(ip_address))
+                print("\n\n\n!? NEW ?!\n\nparse_found_device: _id NOT already in previously_found: " + str(_id) + ", ip: " + str(ip_address))
                 print("self.avahi_lookup_table: " + str(self.avahi_lookup_table))
                 print("self.candle_controllers_ip_list: " + str(self.candle_controllers_ip_list))
                 print("")
@@ -1527,7 +1529,9 @@ class PresenceAdapter(Adapter):
                     found_device_name = vendor
             
 
-                found_device_name = "Presence - " +str(found_device_name) + ' (' + str(ip_address) + ')'
+                
+
+                found_device_name = "Presence - " + str(found_device_name) + ' (' + str(ip_address) + ')'
         
 
                 possible_name = found_device_name
@@ -1579,6 +1583,7 @@ class PresenceAdapter(Adapter):
                                             if str(ip_address) == str(self.previously_found[key]['ip']):
                                                 if self.DEBUG:
                                                     print('\n--> SOMETHING FISHY: same name, same ip address.. just not the same mac?: ' + str(key) + ' =?= ' + str(_id) + '\n')
+                                                abort_adding = True
                                         except:
                                             if self.DEBUG:
                                                 print("Error, no ip in previously found device data?")
@@ -1641,7 +1646,7 @@ class PresenceAdapter(Adapter):
                         if self.previously_found[_id] != None:
                             if self.DEBUG: 
                                 print("Error, somehow this id was already in the previously_found dict")
-                    else:
+                    elif abort_adding == False:
                         if self.DEBUG: 
                             print('\nADDING new entry to previously_found')
                         self.previously_found[_id] = {}
