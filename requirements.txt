@@ -1,3 +1,4 @@
 chardet
 requests
 xmltodict
+mac-vendor-lookup
