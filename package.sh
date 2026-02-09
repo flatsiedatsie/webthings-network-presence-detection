@@ -21,9 +21,10 @@ mkdir -p lib package
 # Pull down Python dependencies
 pip3 install -r requirements.txt -t lib --no-binary :all: --prefix ""  --no-cache-dir --upgrade
 
+wget -O oui.csv http://standards-oui.ieee.org/oui/oui.csv
 
 # Put package together
-cp -r pkg LICENSE manifest.json *.py js images views css README.md lib package/
+cp -r pkg LICENSE manifest.json *.py oui.csv js images views css README.md lib package/
 find package -type f -name '*.pyc' -delete
 find package -type f -name '._*' -delete
 find package -type d -empty -delete
